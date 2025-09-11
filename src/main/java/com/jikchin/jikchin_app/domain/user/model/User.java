@@ -10,6 +10,9 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+        uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "providerId"})
+)
 public class User extends BaseEntity {
 
     @Id
@@ -33,7 +36,15 @@ public class User extends BaseEntity {
         User user = new User();
         user.provider = provider;
         user.providerId = providerId;
-        user.status = UserStatus.ACTIVE;
+        user.status = UserStatus.REGISTERING;
         return user;
+    }
+
+    public void attachProfile(Profile profile) {
+        this.profile = profile;
+    }
+
+    public void activate() {
+        this.status = UserStatus.ACTIVE;
     }
 }
