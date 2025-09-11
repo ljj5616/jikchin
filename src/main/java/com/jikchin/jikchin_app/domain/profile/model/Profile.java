@@ -23,11 +23,23 @@ public class Profile extends BaseEntity {
     @Column(nullable = false, length = 20, unique = true)
     private String nickname;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 200)
     private String avatarUrl;
 
-    @Column(length = 50)
+    @Column(length = 160)
     private String bio;
+
+    @Column
+    private Integer birthYear;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Gender gender;
+
+    public void publishDemographics(Integer birthYear, Gender gender) {
+        this.birthYear = birthYear;
+        this.gender = gender;
+    }
 
     public static Profile create(User user, String nickname, String avatarUrl, String bio) {
         Profile profile = new Profile();
@@ -35,6 +47,9 @@ public class Profile extends BaseEntity {
         profile.nickname = nickname;
         profile.avatarUrl = avatarUrl;
         profile.bio = bio;
+
+        user.attachProfile(profile);
+        user.activate();
 
         return profile;
     }
