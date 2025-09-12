@@ -1,5 +1,6 @@
 package com.jikchin.jikchin_app.domain.profile.model;
 
+import com.jikchin.jikchin_app.domain.team.model.Team;
 import com.jikchin.jikchin_app.domain.user.model.User;
 import com.jikchin.jikchin_app.global.support.BaseEntity;
 import jakarta.persistence.*;
@@ -10,14 +11,18 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(indexes = {
+        @Index(name="idx_profile_fav_kbo", columnList="favorite_kbo_team_id"),
+        @Index(name="idx_profile_fav_kleague", columnList="favorite_kleague_team_id")
+})
 public class Profile extends BaseEntity {
 
     @Id
     private Long userId;
 
     @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(nullable = false, length = 20, unique = true)
@@ -35,6 +40,14 @@ public class Profile extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private Gender gender;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "favorite_kbo_team_id")
+    private Team favoriteKboTeam;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "favorite_kleague_team_id")
+    private Team favoriteKleagueTeam;
 
     public void publishDemographics(Integer birthYear, Gender gender) {
         this.birthYear = birthYear;
