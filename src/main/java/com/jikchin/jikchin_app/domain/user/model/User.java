@@ -2,6 +2,7 @@ package com.jikchin.jikchin_app.domain.user.model;
 
 import com.jikchin.jikchin_app.domain.chat_thread.model.ChatThread;
 import com.jikchin.jikchin_app.domain.profile.model.Profile;
+import com.jikchin.jikchin_app.domain.record.model.Record;
 import com.jikchin.jikchin_app.global.support.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -38,6 +39,9 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "createdBy", fetch = FetchType.LAZY)
     private List<ChatThread> createdThreads = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<Record> records = new ArrayList<>();
 
     public static User createSocialUser(String provider, String providerId) {
         User user = new User();
