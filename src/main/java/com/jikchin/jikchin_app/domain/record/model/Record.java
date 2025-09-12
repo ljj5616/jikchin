@@ -1,5 +1,6 @@
 package com.jikchin.jikchin_app.domain.record.model;
 
+import com.jikchin.jikchin_app.domain.game.model.Game;
 import com.jikchin.jikchin_app.domain.user.model.User;
 import com.jikchin.jikchin_app.global.support.BaseEntity;
 import jakarta.persistence.*;
@@ -37,20 +38,18 @@ public class Record extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
-    private Long gameId;
-    // @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    // @JoinColumn(name = "game_id", nullable = false)
-    // private Game game;
+     @ManyToOne(fetch = FetchType.LAZY, optional = false)
+     @JoinColumn(name = "game_id", nullable = false)
+     private Game game;
 
     @OneToMany(mappedBy = "record", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<RecordImage> images = new ArrayList<>();
 
-    public static Record create(User user, Long gameId, String title, String content, RecordVisibility visibility) {
+    public static Record create(User user, Game game, String title, String content, RecordVisibility visibility) {
         Record record = new Record();
         record.user = user;
-        record.gameId = gameId;
+        record.game = game;
         record.title = title;
         record.content = content;
         record.visibility = visibility;
