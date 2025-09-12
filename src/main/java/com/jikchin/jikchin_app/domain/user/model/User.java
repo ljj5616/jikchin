@@ -1,11 +1,15 @@
 package com.jikchin.jikchin_app.domain.user.model;
 
+import com.jikchin.jikchin_app.domain.chat_thread.model.ChatThread;
 import com.jikchin.jikchin_app.domain.profile.model.Profile;
 import com.jikchin.jikchin_app.global.support.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -31,6 +35,9 @@ public class User extends BaseEntity {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = true)
     private Profile profile;
+
+    @OneToMany(mappedBy = "createdBy", fetch = FetchType.LAZY)
+    private List<ChatThread> createdThreads = new ArrayList<>();
 
     public static User createSocialUser(String provider, String providerId) {
         User user = new User();
