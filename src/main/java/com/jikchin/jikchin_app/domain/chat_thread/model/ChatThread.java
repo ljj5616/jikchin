@@ -14,20 +14,33 @@ public class ChatThread extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private ThreadType threadType;
+
     @Column(nullable = false)
-    private boolean isDirect;
+    private Integer capacity;
 
     @Setter(AccessLevel.PROTECTED)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(nullable = false)
     private User createdBy;
 
-    // 생성팩토리
-    public static ChatThread create(User creator, boolean isDirect) {
+    public static ChatThread createDirect(User creator) {
         ChatThread thread = new ChatThread();
-        thread.createdBy = creator;     // 세팅 주도권은 ChatThread가 가짐
-        thread.isDirect = isDirect;
-        // 필요하면 이 시점에 도메인 규칙 검사(예: direct면 추후 참가자 2명 강제)
+        thread.threadType = ThreadType.DIRECT;
+        thread.createdBy = creator;
+        thread.capacity = 2;
+
+        return thread;
+    }
+
+    public static ChatThread createGroup(User creator, Integer capacity) {
+        ChatThread thread = new ChatThread();
+        thread.threadType = ThreadType.GROUP;
+        thread.createdBy = creator;
+        thread.capacity = capacity;
+
         return thread;
     }
 }
