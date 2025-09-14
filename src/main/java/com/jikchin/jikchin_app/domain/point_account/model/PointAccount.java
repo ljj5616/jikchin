@@ -28,11 +28,11 @@ public class PointAccount extends BaseEntity {
     private Integer balance = 0;
 
     public static PointAccount open(User user) {
-        PointAccount a = new PointAccount();
-        a.user = user;
-        a.userId = user.getId();
-        a.balance = 0;
-        return a;
+        PointAccount pointAccount = new PointAccount();
+        pointAccount.user = user;
+        pointAccount.userId = user.getId();
+        pointAccount.balance = 0;
+        return pointAccount;
     }
 
     /** 내부 사용: 원장 반영 직후 호출 (음수 방지 검증은 서비스에서) */
