@@ -1,4 +1,4 @@
-package com.jikchin.jikchin_app.application.dto.auth;
+package com.jikchin.jikchin_app.application.dto.profile;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
