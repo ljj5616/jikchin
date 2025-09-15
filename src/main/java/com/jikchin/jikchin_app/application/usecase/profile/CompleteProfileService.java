@@ -12,8 +12,10 @@ import com.jikchin.jikchin_app.domain.profile.model.Profile;
 import com.jikchin.jikchin_app.domain.team.model.Team;
 import com.jikchin.jikchin_app.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,9 @@ public class CompleteProfileService implements CompleteProfileUseCase {
     private final KboTeamQueryPort kboTeamQueryPort;
     private final KLeagueTeamQueryPort kLeagueTeamQueryPort;
     private final TokenProviderPort tokenProviderPort;
+
+    @Value("${avatar.default-url}")
+    private String defaultAvatarUrl;
 
     @Override
     @Transactional
@@ -47,10 +52,15 @@ public class CompleteProfileService implements CompleteProfileUseCase {
                     .orElseThrow(() -> new IllegalArgumentException("K League team not found"));
         }
 
+        //아바타 기본값 치환
+        String avatarUrl = StringUtils.hasText(request.getAvatarUrl())
+                ? request.getAvatarUrl()
+                : defaultAvatarUrl;
+
         Profile profile = Profile.create(
                 user,
                 request.getNickname(),
-                request.getAvatarUrl(),
+                avatarUrl,
                 request.getBio()
         );
         if (kboTeam != null || kleagueTeam != null) {
