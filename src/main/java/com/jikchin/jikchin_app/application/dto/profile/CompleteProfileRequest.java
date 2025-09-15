@@ -13,7 +13,6 @@ import lombok.Setter;
 public class CompleteProfileRequest {
     @NotBlank
     private String nickname;
-    @NotBlank
     private String avatarUrl;
     private String bio;
     private Integer favoriteKboTeamId;
