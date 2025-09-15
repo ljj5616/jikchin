@@ -11,6 +11,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CompleteProfileRequest {
     private String nickname;
+    private String avatarUrl;
+    private String bio;
     private Integer favoriteKboTeamId;
     private Integer favoriteKleagueTeamId;
 }
