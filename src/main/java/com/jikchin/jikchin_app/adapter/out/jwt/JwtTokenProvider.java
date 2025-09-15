@@ -1,6 +1,7 @@
 package com.jikchin.jikchin_app.adapter.out.jwt;
 
 import com.jikchin.jikchin_app.application.port.out.auth.TokenProviderPort;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,6 +42,17 @@ public class JwtTokenProvider implements TokenProviderPort {
     @Override
     public String issueRefreshToken(Long userId) {
         return buildJwt(userId, refreshTtlMillis, Map.of("typ", "refresh"));
+    }
+
+    @Override
+    public ParsedToken parse(String token) {
+        Claims c = Jwts.parser().verifyWith(key).build()
+                .parseSignedClaims(token)
+                .getPayload();
+        Long userId = Long.valueOf(c.getSubject());
+        Boolean needProfile = Boolean.TRUE.equals(c.get("needProfile", Boolean.class));
+        String typ = c.get("typ", String.class);
+        return new ParsedToken(userId, needProfile, typ);
     }
 
     private String buildJwt(Long userId, long ttlMillis, Map<String, Object> claims) {
