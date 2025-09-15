@@ -8,6 +8,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Objects;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -55,15 +57,26 @@ public class Profile extends BaseEntity {
     }
 
     public static Profile create(User user, String nickname, String avatarUrl, String bio) {
-        Profile profile = new Profile();
-        profile.user = user;
-        profile.nickname = nickname;
-        profile.avatarUrl = avatarUrl;
-        profile.bio = bio;
+        // 필수값 검증
+        Objects.requireNonNull(user, "user");
+        if (nickname == null || nickname.isBlank()) throw new IllegalArgumentException("nickname required");
+        if (avatarUrl == null || avatarUrl.isBlank()) throw new IllegalArgumentException("avatarUrl required");
 
-        user.attachProfile(profile);
+        Profile p = new Profile();
+        p.user = user;
+        p.nickname = nickname;
+        p.avatarUrl = avatarUrl;
+        p.bio = bio; // bio는 null 가능
+
+        user.attachProfile(p);
         user.activate();
-
-        return profile;
+        return p;
     }
+
+    // 선택값(팀) 세팅은 별도 도메인 메서드
+    public void chooseFavoriteTeams(Team kbo, Team kleague) {
+        this.favoriteKboTeam = kbo;
+        this.favoriteKleagueTeam = kleague;
+    }
+
 }
