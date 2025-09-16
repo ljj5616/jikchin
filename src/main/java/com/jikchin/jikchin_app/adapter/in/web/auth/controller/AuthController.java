@@ -1,5 +1,6 @@
 package com.jikchin.jikchin_app.adapter.in.web.auth.controller;
 
+import com.jikchin.jikchin_app.adapter.in.web.security.CurrentUser;
 import com.jikchin.jikchin_app.application.dto.auth.AccessTokenRequest;
 import com.jikchin.jikchin_app.application.dto.auth.OAuthProvider;
 import com.jikchin.jikchin_app.application.dto.auth.SocialLoginRequest;
@@ -10,9 +11,9 @@ import com.jikchin.jikchin_app.application.port.in.auth.SocialLoginUseCase;
 import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -46,18 +47,17 @@ public class AuthController {
     // ─────────────────────────────────────────────────────────────────────────
     @PostMapping("/complete-profile")
     public ResponseEntity<CompleteProfileResponse> completeProfile(
-            @RequestAttribute("userId") Long userId,
-            @RequestAttribute(value = "needProfile", required = false) Boolean needProfile,
+            @AuthenticationPrincipal CurrentUser me,
             @RequestBody @Valid CompleteProfileRequest request
             ) {
-        if (needProfile == null || !needProfile) {
-            // 이미 프로필이 완료된 토큰으로 접근한 경우 방어
+        // 온보딩 토큰만 허용
+        if (!me.needProfile()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(CompleteProfileResponse.builder()
                             .accessToken(null)
                             .refreshToken(null)
                             .build());
         }
-        return ResponseEntity.ok(completeProfileUseCase.completeProfile(userId, request));
+        return ResponseEntity.ok(completeProfileUseCase.completeProfile(me.userId(), request));
     }
 }
