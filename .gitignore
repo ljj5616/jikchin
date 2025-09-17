@@ -37,4 +37,4 @@ out/
 .vscode/
 
 ### Spring Boot ###
-application.yml
+application-local.yml
