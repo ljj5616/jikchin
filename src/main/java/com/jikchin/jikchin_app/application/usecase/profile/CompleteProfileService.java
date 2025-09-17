@@ -79,7 +79,7 @@ public class CompleteProfileService implements CompleteProfileUseCase {
         }
 
         // URL이 아닌 'key'를 저장
-        String avatarKey = pickAvatarKey(userId, request.getAvatarUrl()); // (임시: 필드명이 avatarUrl이면 그대로 받아 key로 변환)
+        String avatarKey = pickAvatarKey(userId, request.getAvatarKey()); // (임시: 필드명이 avatarUrl이면 그대로 받아 key로 변환)
 
         Profile profile = Profile.create(
                 user,
