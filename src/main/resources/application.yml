@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/sports_mate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:none}
+    properties:
+      hibernate:
+        show_sql: ${JPA_SHOW_SQL:false}
+        format_sql: ${JPA_FORMAT_SQL:true}
+
+app:
+  assets:
+    base-url: ${ASSETS_BASE_URL}
+    default-avatar-key: ${DEFAULT_AVATAR_KEY:avatars/defaults/default1.jpg}
+  aws:
+    region: ap-northeast-2
+    s3:
+      bucket: jikchin-avatar-storage
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-ttl-ms: 900000              # 15분
+  onboarding-access-ttl-ms: 1800000  # 30분 (온보딩 토큰)
+  refresh-ttl-ms: 1209600000         # 14일
+
