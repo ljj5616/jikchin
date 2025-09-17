@@ -60,7 +60,7 @@ public class Profile extends BaseEntity {
         // 필수값 검증
         Objects.requireNonNull(user, "user");
         if (nickname == null || nickname.isBlank()) throw new IllegalArgumentException("nickname required");
-        if (avatarKey == null || avatarKey.isBlank()) throw new IllegalArgumentException("avatarUrl required");
+        if (avatarKey == null || avatarKey.isBlank()) throw new IllegalArgumentException("avatarKey required");
 
         Profile p = new Profile();
         p.user = user;
