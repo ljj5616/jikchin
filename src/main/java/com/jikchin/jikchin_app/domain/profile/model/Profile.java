@@ -30,8 +30,8 @@ public class Profile extends BaseEntity {
     @Column(nullable = false, length = 20, unique = true)
     private String nickname;
 
-    @Column(nullable = false, length = 200)
-    private String avatarUrl;
+    @Column(name = "avatar_key", nullable = false, length = 200)
+    private String avatarKey;
 
     @Column(length = 160)
     private String bio;
@@ -56,16 +56,16 @@ public class Profile extends BaseEntity {
         this.gender = gender;
     }
 
-    public static Profile create(User user, String nickname, String avatarUrl, String bio) {
+    public static Profile create(User user, String nickname, String avatarKey, String bio) {
         // 필수값 검증
         Objects.requireNonNull(user, "user");
         if (nickname == null || nickname.isBlank()) throw new IllegalArgumentException("nickname required");
-        if (avatarUrl == null || avatarUrl.isBlank()) throw new IllegalArgumentException("avatarUrl required");
+        if (avatarKey == null || avatarKey.isBlank()) throw new IllegalArgumentException("avatarUrl required");
 
         Profile p = new Profile();
         p.user = user;
         p.nickname = nickname;
-        p.avatarUrl = avatarUrl;
+        p.avatarKey = avatarKey;
         p.bio = bio; // bio는 null 가능
 
         user.attachProfile(p);
