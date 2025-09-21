@@ -1,27 +1,40 @@
-name: CI
+name: backend-ci
+
 on:
+  push:
+    branches: [ main, 'feat/**', 'fix/**', 'chore/**' ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main ]
-  push:
-    branches: [ main, feat/**, fix/**, chore/** ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # 모든 run 스텝의 작업 폴더를 backend 로 고정 (여기가 핵심)
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (with Gradle cache)
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-
-      - name: Make Gradle wrapper executable
+          cache: gradle
+
+      - name: Make gradlew executable
         run: chmod +x gradlew
+
+      # 테스트가 아직 환경 의존적이면 -x test 유지
       - name: Build (tests skipped for now)
         run: ./gradlew clean build -x test
