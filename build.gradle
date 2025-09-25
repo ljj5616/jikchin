@@ -28,6 +28,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -46,7 +47,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 
 	//S3
-	implementation 'software.amazon.awssdk:s3:2.25.+'
+	implementation 'software.amazon.awssdk:s3:2.25.66'
+
+	// google
+	implementation 'com.nimbusds:nimbus-jose-jwt:9.37.3'
 }
 
 tasks.named('test') {
