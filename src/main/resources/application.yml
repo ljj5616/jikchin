@@ -22,9 +22,14 @@ app:
     s3:
       bucket: jikchin-avatar-storage
 
+    oauth:
+      google:
+        client-id: ${GOOGLE_CLIENT_ID}          # "웹 클라이언트 ID"를 local에서 주입
+        # 검증 시 허용할 issuer (둘 다 허용)
+        issuers: accounts.google.com, https://accounts.google.com
+
 jwt:
   secret: ${JWT_SECRET}
   access-ttl-ms: 900000              # 15분
   onboarding-access-ttl-ms: 1800000  # 30분 (온보딩 토큰)
   refresh-ttl-ms: 1209600000         # 14일
-
