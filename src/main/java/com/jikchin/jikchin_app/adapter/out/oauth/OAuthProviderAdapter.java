@@ -16,7 +16,7 @@ public class OAuthProviderAdapter implements OAuthProviderPort {
 
     private final RestTemplate restTemplate;
 
-    @Value("${oauth.google.client-id}")
+    @Value("${app.aws.oauth.google.client-id}")
     String googleClientId;
 
 
