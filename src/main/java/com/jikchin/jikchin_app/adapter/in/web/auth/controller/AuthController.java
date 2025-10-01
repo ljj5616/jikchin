@@ -1,7 +1,7 @@
 package com.jikchin.jikchin_app.adapter.in.web.auth.controller;
 
 import com.jikchin.jikchin_app.adapter.in.web.security.CurrentUser;
-import com.jikchin.jikchin_app.application.dto.auth.AccessTokenRequest;
+import com.jikchin.jikchin_app.adapter.in.web.auth.dto.AccessTokenRequest;
 import com.jikchin.jikchin_app.application.dto.auth.OAuthProvider;
 import com.jikchin.jikchin_app.application.dto.auth.SocialLoginRequest;
 import com.jikchin.jikchin_app.application.dto.auth.SocialLoginResponse;

@@ -1,4 +1,4 @@
-package com.jikchin.jikchin_app.application.dto.auth;
+package com.jikchin.jikchin_app.adapter.in.web.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
