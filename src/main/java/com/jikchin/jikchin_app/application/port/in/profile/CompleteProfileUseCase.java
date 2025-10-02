@@ -1,8 +1,8 @@
 package com.jikchin.jikchin_app.application.port.in.profile;
 
-import com.jikchin.jikchin_app.application.dto.profile.CompleteProfileRequest;
-import com.jikchin.jikchin_app.application.dto.profile.CompleteProfileResponse;
+import com.jikchin.jikchin_app.adapter.in.web.profile.dto.CompleteProfileHttpRequest;
+import com.jikchin.jikchin_app.adapter.in.web.profile.dto.CompleteProfileHttpResponse;
 
 public interface CompleteProfileUseCase {
-    CompleteProfileResponse completeProfile(Long userId, CompleteProfileRequest request);
+    CompleteProfileResult completeProfile(CompleteProfileCommand command);
 }
