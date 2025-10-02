@@ -1,13 +1,14 @@
 package com.jikchin.jikchin_app.adapter.in.web.auth.controller;
 
+import com.jikchin.jikchin_app.adapter.in.web.auth.dto.SocialLoginHttpResponse;
 import com.jikchin.jikchin_app.adapter.in.web.security.CurrentUser;
-import com.jikchin.jikchin_app.application.dto.auth.AccessTokenRequest;
-import com.jikchin.jikchin_app.application.dto.auth.OAuthProvider;
-import com.jikchin.jikchin_app.application.dto.auth.SocialLoginRequest;
-import com.jikchin.jikchin_app.application.dto.auth.SocialLoginResponse;
-import com.jikchin.jikchin_app.application.dto.profile.CompleteProfileRequest;
-import com.jikchin.jikchin_app.application.dto.profile.CompleteProfileResponse;
+import com.jikchin.jikchin_app.adapter.in.web.auth.dto.AccessTokenRequest;
+import com.jikchin.jikchin_app.application.port.in.auth.OAuthProvider;
+import com.jikchin.jikchin_app.adapter.in.web.profile.dto.CompleteProfileHttpRequest;
+import com.jikchin.jikchin_app.adapter.in.web.profile.dto.CompleteProfileHttpResponse;
+import com.jikchin.jikchin_app.application.port.in.auth.SocialLoginCommand;
 import com.jikchin.jikchin_app.application.port.in.auth.SocialLoginUseCase;
+import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileCommand;
 import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +32,17 @@ public class AuthController {
      */
 
     @PostMapping("/{provider}/login")
-    public ResponseEntity<SocialLoginResponse> socialLogin(
+    public ResponseEntity<SocialLoginHttpResponse> socialLogin(
             @PathVariable OAuthProvider provider,
             @RequestBody @Valid AccessTokenRequest body
     ) {
-        SocialLoginRequest request =
-                new SocialLoginRequest(provider.name().toLowerCase(), body.getAccessToken());
-        return ResponseEntity.ok(socialLoginUseCase.login(request));
+        var cmd = new SocialLoginCommand(provider.name().toLowerCase(), body.getAccessToken());
+        var result = socialLoginUseCase.login(cmd);
+        return ResponseEntity.ok(new SocialLoginHttpResponse(
+                result.needProfile(),
+                result.accessToken(),
+                result.refreshToken()
+        ));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -46,18 +51,27 @@ public class AuthController {
     // JWT 필터가 request.setAttribute("userId", ...), ("needProfile", ...) 셋팅했다고 가정
     // ─────────────────────────────────────────────────────────────────────────
     @PostMapping("/complete-profile")
-    public ResponseEntity<CompleteProfileResponse> completeProfile(
+    public ResponseEntity<CompleteProfileHttpResponse> completeProfile(
             @AuthenticationPrincipal CurrentUser me,
-            @RequestBody @Valid CompleteProfileRequest request
-            ) {
+            @RequestBody @Valid CompleteProfileHttpRequest request
+    ) {
         // 온보딩 토큰만 허용
         if (!me.needProfile()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(CompleteProfileResponse.builder()
-                            .accessToken(null)
-                            .refreshToken(null)
-                            .build());
+                    .body(new CompleteProfileHttpResponse(null, null));
         }
-        return ResponseEntity.ok(completeProfileUseCase.completeProfile(me.userId(), request));
+
+        var cmd = new CompleteProfileCommand(
+                me.userId(),
+                request.nickname(),
+                request.avatarKey(),
+                request.bio(),
+                request.favoriteKboTeamId(),
+                request.favoriteKleagueTeamId()
+        );
+
+        var result = completeProfileUseCase.completeProfile(cmd);
+
+        return ResponseEntity.ok(new CompleteProfileHttpResponse(result.accessToken(), result.refreshToken()));
     }
 }

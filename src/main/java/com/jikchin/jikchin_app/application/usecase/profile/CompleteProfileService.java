@@ -1,7 +1,7 @@
 package com.jikchin.jikchin_app.application.usecase.profile;
 
-import com.jikchin.jikchin_app.application.dto.profile.CompleteProfileRequest;
-import com.jikchin.jikchin_app.application.dto.profile.CompleteProfileResponse;
+import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileCommand;
+import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileResult;
 import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileUseCase;
 import com.jikchin.jikchin_app.application.port.out.auth.TokenProviderPort;
 import com.jikchin.jikchin_app.application.port.out.profile.ProfileRepositoryPort;
@@ -58,47 +58,42 @@ public class CompleteProfileService implements CompleteProfileUseCase {
 
     @Override
     @Transactional
-    public CompleteProfileResponse completeProfile(Long userId, CompleteProfileRequest request) {
-        User user = userRepositoryPort.findById(userId)
+    public CompleteProfileResult completeProfile(CompleteProfileCommand command) {
+        User user = userRepositoryPort.findById(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("user not found"));
 
-        if (profileRepositoryPort.existsByNickname(request.getNickname())) {
+        if (profileRepositoryPort.existsByNickname(command.nickname())) {
             throw new IllegalArgumentException("nickname already taken");
         }
 
         Team kboTeam = null;
-        if (request.getFavoriteKboTeamId() != null) {
-            kboTeam = kboTeamQueryPort.findById(request.getFavoriteKboTeamId())
+        if (command.favoriteKboTeamId() != null) {
+            kboTeam = kboTeamQueryPort.findById(command.favoriteKboTeamId())
                     .orElseThrow(() -> new IllegalArgumentException("KBO team not found"));
         }
 
         Team kleagueTeam = null;
-        if (request.getFavoriteKleagueTeamId() != null) {
-            kleagueTeam = kLeagueTeamQueryPort.findById(request.getFavoriteKleagueTeamId())
+        if (command.favoriteKleagueTeamId() != null) {
+            kleagueTeam = kLeagueTeamQueryPort.findById(command.favoriteKleagueTeamId())
                     .orElseThrow(() -> new IllegalArgumentException("K League team not found"));
         }
 
-        // URL이 아닌 'key'를 저장
-        String avatarKey = pickAvatarKey(userId, request.getAvatarKey()); // (임시: 필드명이 avatarUrl이면 그대로 받아 key로 변환)
+        String avatarKey = pickAvatarKey(command.userId(), command.avatarKey());
 
         Profile profile = Profile.create(
                 user,
-                request.getNickname(),
-                avatarKey,     // "Url" 대신 "Key"
-                request.getBio()
+                command.nickname(),
+                avatarKey,
+                command.bio()
         );
         if (kboTeam != null || kleagueTeam != null) {
             profile.chooseFavoriteTeams(kboTeam, kleagueTeam);
         }
-
         profileRepositoryPort.save(profile);
 
-        String access = tokenProviderPort.issueAccessToken(user.getId(), false);
+        String access  = tokenProviderPort.issueAccessToken(user.getId(), false);
         String refresh = tokenProviderPort.issueRefreshToken(user.getId());
 
-        return CompleteProfileResponse.builder()
-                .accessToken(access)
-                .refreshToken(refresh)
-                .build();
+        return new CompleteProfileResult(access, refresh);
     }
 }
