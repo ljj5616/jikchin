@@ -1,12 +1,12 @@
 package com.jikchin.jikchin_app.adapter.in.web.auth.controller;
 
+import com.jikchin.jikchin_app.adapter.in.web.auth.dto.SocialLoginHttpResponse;
 import com.jikchin.jikchin_app.adapter.in.web.security.CurrentUser;
 import com.jikchin.jikchin_app.adapter.in.web.auth.dto.AccessTokenRequest;
-import com.jikchin.jikchin_app.application.dto.auth.OAuthProvider;
-import com.jikchin.jikchin_app.application.dto.auth.SocialLoginRequest;
-import com.jikchin.jikchin_app.application.dto.auth.SocialLoginResponse;
+import com.jikchin.jikchin_app.application.port.in.auth.OAuthProvider;
 import com.jikchin.jikchin_app.adapter.in.web.profile.dto.CompleteProfileHttpRequest;
 import com.jikchin.jikchin_app.adapter.in.web.profile.dto.CompleteProfileHttpResponse;
+import com.jikchin.jikchin_app.application.port.in.auth.SocialLoginCommand;
 import com.jikchin.jikchin_app.application.port.in.auth.SocialLoginUseCase;
 import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileCommand;
 import com.jikchin.jikchin_app.application.port.in.profile.CompleteProfileUseCase;
@@ -32,13 +32,17 @@ public class AuthController {
      */
 
     @PostMapping("/{provider}/login")
-    public ResponseEntity<SocialLoginResponse> socialLogin(
+    public ResponseEntity<SocialLoginHttpResponse> socialLogin(
             @PathVariable OAuthProvider provider,
             @RequestBody @Valid AccessTokenRequest body
     ) {
-        SocialLoginRequest request =
-                new SocialLoginRequest(provider.name().toLowerCase(), body.getAccessToken());
-        return ResponseEntity.ok(socialLoginUseCase.login(request));
+        var cmd = new SocialLoginCommand(provider.name().toLowerCase(), body.getAccessToken());
+        var result = socialLoginUseCase.login(cmd);
+        return ResponseEntity.ok(new SocialLoginHttpResponse(
+                result.needProfile(),
+                result.accessToken(),
+                result.refreshToken()
+        ));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
