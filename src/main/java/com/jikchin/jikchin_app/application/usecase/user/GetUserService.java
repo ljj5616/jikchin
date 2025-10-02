@@ -1,6 +1,6 @@
 package com.jikchin.jikchin_app.application.usecase.user;
 
-import com.jikchin.jikchin_app.application.dto.user.UserResult;
+import com.jikchin.jikchin_app.application.port.in.user.UserResult;
 import com.jikchin.jikchin_app.application.port.in.user.GetUserUseCase;
 import com.jikchin.jikchin_app.application.port.out.user.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
