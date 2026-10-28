@@ -1,26 +1,11 @@
 name: app-ci
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, develop, 'feat/**', 'fix/**', 'chore/**' ]
-    paths:
-      - 'src/**'
-      - 'build.gradle'
-      - 'settings.gradle'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main, develop ]
-    paths:
-      - 'src/**'
-      - 'build.gradle'
-      - 'settings.gradle'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/workflows/ci.yml'
 
 jobs:
   build:
