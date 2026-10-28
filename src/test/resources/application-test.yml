@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:jikchin-test;MODE=MySQL;NON_KEYWORDS=USER;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+app:
+  assets:
+    base-url: https://assets.example.test
+    default-avatar-key: avatars/defaults/default1.jpg
+  aws:
+    oauth:
+      google:
+        client-id: test-client-id
+
+jwt:
+  secret: jikchin-test-signing-key-for-isolated-tests-only

@@ -25,6 +25,5 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # 테스트 정비 전에만 -x test 유지. 정비 후에는 빼세요.
       - name: Build
-        run: ./gradlew clean build -x test --no-daemon
+        run: ./gradlew clean build --no-daemon
