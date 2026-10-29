@@ -70,6 +70,7 @@ public class PointTopup {
 
     /** PG별 영수증/서명 원문(JSON 등) 필요 시 저장 */
     @Lob
+    @Column(columnDefinition = "longtext")
     private String receiptPayload;
 
     // ---------- 공통 타임라인 ----------

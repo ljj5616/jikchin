@@ -11,6 +11,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: jikchin_test
+          MYSQL_USER: jikchin_test
+          MYSQL_PASSWORD: ci-test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,3 +43,10 @@ jobs:
 
       - name: Build
         run: ./gradlew clean build --no-daemon
+
+      - name: Verify MySQL migrations
+        run: ./gradlew mysqlTest --no-daemon
+        env:
+          MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/jikchin_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+          MYSQL_TEST_USERNAME: jikchin_test
+          MYSQL_TEST_PASSWORD: ci-test-password
