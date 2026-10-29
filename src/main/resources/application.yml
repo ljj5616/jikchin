@@ -7,7 +7,7 @@ logging:
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/sports_mate?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/jikchin?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -22,7 +22,7 @@ spring:
 
 app:
   assets:
-    base-url: ${ASSETS_BASE_URL}
+    base-url: ${ASSETS_BASE_URL}                # 임시 설정. 추후 설정 필요
     default-avatar-key: ${DEFAULT_AVATAR_KEY:avatars/defaults/default1.jpg}
   aws:
     region: ap-northeast-2
@@ -31,7 +31,7 @@ app:
 
     oauth:
       google:
-        client-id: ${GOOGLE_CLIENT_ID}          # "웹 클라이언트 ID"를 local에서 주입
+        client-id: ${GOOGLE_CLIENT_ID}          # 임시 설정. 추후 설정 필요
         # 검증 시 허용할 issuer (둘 다 허용)
         issuers: accounts.google.com, https://accounts.google.com
 
