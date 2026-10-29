@@ -25,7 +25,7 @@ public class ChatMessage extends BaseEntity {
     private Long id;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "longtext")
     private String body;
 
     @Enumerated(EnumType.STRING)
