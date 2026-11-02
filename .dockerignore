@@ -1,0 +1,15 @@
+.git
+.github
+.gradle
+.idea
+.vscode
+build
+out
+.env
+.env.*
+**/application-local.yml
+**/application-local.yaml
+**/local.properties
+*.iml
+*.pem
+*.key

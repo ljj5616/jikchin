@@ -93,6 +93,36 @@ ORDER BY installed_rank;
 - 기존 테이블이 있는데 Flyway 이력이 없는 DB는 자동 baseline하지 않고 시작을 중단합니다. 기존 데이터가 있다면 백업과 스키마 비교 후 명시적으로 baseline을 계획합니다. 새 개발 환경은 빈 DB로 연결하면 됩니다.
 - Flyway의 `clean`은 비활성화되어 있습니다. MySQL DDL은 실패 시 전체 롤백되지 않을 수 있으므로 실패한 마이그레이션은 오류와 실제 적용 상태를 확인한 뒤 복구합니다.
 
+## Docker로 로컬 서버 실행
+
+Docker Desktop을 실행한 후 이 디렉터리에 `.env`가 없다면 예시 파일을 복사합니다. 기존 `.env`는 덮어쓰지 않습니다.
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+예시 파일에서 복사한 경우 `.env`의 `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET`을 로컬 전용 값으로 교체하고, `GOOGLE_CLIENT_ID`에는 Android의 `GOOGLE_WEB_CLIENT_ID`와 같은 Google 웹 클라이언트 ID를 설정합니다. JWT 비밀키는 UTF-8 기준 32바이트 이상이어야 합니다. `ASSETS_BASE_URL`은 실제 이미지 제공 주소로 변경하세요. 예시 주소는 서버 기동 확인용이며 이미지가 표시되지 않습니다. `.env`는 Git과 Docker 빌드 컨텍스트에서 제외됩니다.
+
+```powershell
+docker compose up --build -d
+docker compose ps
+docker compose logs -f app
+```
+
+Compose는 별도의 MySQL 8과 서버를 실행합니다. MySQL 초기화가 끝나면 서버가 시작되고 Flyway가 마이그레이션을 적용한 뒤 JPA가 스키마를 검증합니다. Swagger는 `http://localhost:8080/swagger-ui/index.html`에서 확인할 수 있습니다. 다른 프로그램이 포트를 사용 중이면 `.env`의 `APP_PORT` 또는 `MYSQL_PORT`를 변경하세요.
+
+MySQL Workbench에서는 `127.0.0.1:3307`, 사용자 `jikchin_app`, `.env`의 `MYSQL_PASSWORD`, DB `jikchin`으로 접속합니다. 기존 노트북 MySQL과 Docker MySQL은 서로 다른 DB이며, Docker DB는 `mysql_data` 볼륨에 저장됩니다. MySQL 초기 계정과 비밀번호는 볼륨 최초 생성 시 설정되므로, 이후 `.env`만 바꿔서는 기존 DB 계정이 바뀌지 않습니다.
+
+Android 에뮬레이터의 기본 `BASE_URL`은 `http://10.0.2.2:8080/`입니다. 실제 휴대전화에서 접속하려면 로컬 네트워크에 맞는 서버 주소와 방화벽 설정이 필요하고, `.env`의 `APP_BIND_ADDRESS`를 접근 가능한 주소로 변경해야 합니다. 기본값은 노트북 내부에서만 접근 가능한 `127.0.0.1`입니다.
+
+```powershell
+docker compose down
+```
+
+위 명령은 컨테이너를 정지하지만 DB 볼륨은 보존합니다. `docker compose down -v`는 Docker DB 볼륨까지 삭제하므로 데이터를 지울 때만 사용하세요. 기존 노트북 MySQL의 DB는 Docker 볼륨과 별개입니다.
+
+GitHub Actions의 `docker-smoke` 작업은 예시 설정으로 Docker 이미지와 별도의 MySQL을 실행하고 API 문서가 응답하는지 확인합니다. 이 작업은 CI의 임시 DB를 사용하며 실행이 끝나면 정리합니다.
+
 ## 테스트
 
 ```powershell
