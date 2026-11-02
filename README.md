@@ -139,6 +139,7 @@ CI에서도 테스트를 포함한 전체 빌드를 실행합니다.
 
 - `POST /auth/{provider}/login`: `accessToken`에 Google ID 토큰 또는 Kakao/Naver 액세스 토큰을 전달합니다. Google ID 토큰의 대상은 서버의 `GOOGLE_CLIENT_ID`와 앱의 `GOOGLE_WEB_CLIENT_ID`가 같아야 합니다.
 - 신규 사용자는 `needProfile=true`인 온보딩 액세스 토큰을 받습니다. `POST /auth/complete-profile`로 프로필을 완성하면 일반 액세스 토큰과 갱신 토큰을 받습니다.
+- `GET /auth/nickname-availability?nickname=...`은 온보딩 액세스 토큰으로 닉네임 사용 가능 여부를 조회하고 `{"available":true}` 또는 `{"available":false}`를 반환합니다. 닉네임은 공백이 아닌 20자 이하 문자열이어야 하며, 실제 프로필 저장 시에도 중복을 검사합니다.
 - `GET /auth/session`으로 현재 액세스 토큰의 프로필 등록 상태를 확인합니다.
 - `POST /auth/refresh`에 `{"refreshToken":"..."}`을 보내면 새 토큰 쌍을 발급하고 기존 갱신 토큰을 폐기합니다.
 - `POST /auth/logout`에 `{"refreshToken":"..."}`을 보내면 해당 갱신 토큰을 폐기합니다. 온보딩 중에는 `refreshToken`이 없으므로 null을 보낼 수 있습니다. 이미 발급된 액세스 토큰은 만료될 때까지 유효하며 기본 만료 시간은 15분입니다.

@@ -38,7 +38,7 @@ public class SwaggerConfig {
     /**
      * /auth/** 그룹 (로그인/회원가입 등)
      * - 이 그룹 안의 엔드포인트는 문서상에서 따로 모아 보여줌
-     * - 아래 customizer로 /auth/** 는 전역 보안 제거(Authorize 없이 호출 가능) 처리
+     * - 닉네임 중복 확인은 온보딩 토큰이 필요하므로 전역 보안을 유지
      */
     @Bean
     public GroupedOpenApi authGroup(OpenApiCustomizer authOpenApiCustomizer) {
@@ -52,7 +52,7 @@ public class SwaggerConfig {
     @Bean
     public OpenApiCustomizer authOpenApiCustomizer() {
         return openApi -> openApi.getPaths().forEach((path, item) -> {
-            if (path.startsWith("/auth/")) {
+            if (path.startsWith("/auth/") && !path.equals("/auth/nickname-availability")) {
                 item.readOperations().forEach(op -> op.setSecurity(List.of())); // 보안 요구 제거
             }
         });
