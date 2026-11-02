@@ -9,6 +9,8 @@ import com.jikchin.jikchin_app.game.repository.TeamRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
 import com.jikchin.jikchin_app.user.domain.Profile;
 import com.jikchin.jikchin_app.game.domain.Team;
+import com.jikchin.jikchin_app.game.domain.League;
+import com.jikchin.jikchin_app.game.domain.LeagueCode;
 import com.jikchin.jikchin_app.user.domain.User;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,6 +73,14 @@ class CompleteProfileServiceTest {
     void completingProfilePreservesSelectedTeamsAndConvertsOwnAvatarUrlToKey() {
         Team kbo = mock(Team.class);
         Team kleague = mock(Team.class);
+        League kboLeague = mock(League.class);
+        League footballLeague = mock(League.class);
+        when(kbo.getLeague()).thenReturn(kboLeague);
+        when(kboLeague.getCode()).thenReturn(LeagueCode.KBO);
+        when(kbo.isOnboardingSelectable()).thenReturn(true);
+        when(kleague.getLeague()).thenReturn(footballLeague);
+        when(footballLeague.getCode()).thenReturn(LeagueCode.KLEAGUE);
+        when(kleague.isOnboardingSelectable()).thenReturn(true);
         when(teams.findById(1)).thenReturn(Optional.of(kbo));
         when(teams.findById(2)).thenReturn(Optional.of(kleague));
         stubTokens();
