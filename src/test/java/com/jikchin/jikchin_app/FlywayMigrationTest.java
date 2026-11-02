@@ -7,6 +7,8 @@ import com.jikchin.jikchin_app.user.domain.User;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
 import com.jikchin.jikchin_app.user.repository.ProfileRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
+import com.jikchin.jikchin_app.game.repository.TeamRepository;
+import com.jikchin.jikchin_app.game.domain.LeagueCode;
 import jakarta.persistence.EntityManager;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationState;
@@ -30,6 +32,7 @@ class FlywayMigrationTest {
     @Autowired UserRepository users;
     @Autowired ProfileRepository profiles;
     @Autowired EntityManager entityManager;
+    @Autowired TeamRepository teams;
 
     @Test
     void applicationMigratesBeforeJpaValidatesTheSchema() {
@@ -40,8 +43,10 @@ class FlywayMigrationTest {
         assertThat(flyway.info().applied())
                 .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
                 .extracting(migration -> migration.getVersion().getVersion())
-                .contains("1", "2");
+                .contains("1", "2", "3");
         assertThat(flyway.info().pending()).isEmpty();
+        assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO)).hasSizeGreaterThanOrEqualTo(10);
+        assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KLEAGUE)).hasSizeGreaterThanOrEqualTo(12);
         flyway.validate();
     }
 

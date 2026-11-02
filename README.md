@@ -54,7 +54,7 @@ com.jikchin.jikchin_app
 
 ## DB 마이그레이션
 
-MySQL 스키마는 Flyway로 관리합니다. 애플리케이션 시작 시 `src/main/resources/db/migration`의 SQL을 버전 순서대로 적용한 뒤, JPA가 엔티티와 DB 구조를 검증합니다. `V1__init_schema.sql`은 현재 엔티티 18개의 테이블, 외래 키, 고유 제약 조건과 인덱스를 생성합니다. 팀·리그 등 기준 데이터는 포함하지 않습니다.
+MySQL 스키마는 Flyway로 관리합니다. 애플리케이션 시작 시 `src/main/resources/db/migration`의 SQL을 버전 순서대로 적용한 뒤, JPA가 엔티티와 DB 구조를 검증합니다. `V1__init_schema.sql`은 현재 엔티티 18개의 테이블, 외래 키, 고유 제약 조건과 인덱스를 생성합니다.
 
 로컬 MySQL에 빈 DB를 먼저 준비합니다.
 
@@ -89,6 +89,7 @@ ORDER BY installed_rank;
 - 새 변경은 `V2__설명.sql`, `V3__설명.sql`처럼 버전 뒤에 밑줄 두 개를 붙인 새 파일로 작성합니다. SQL과 엔티티 변경을 함께 커밋합니다.
 - 이미 적용한 버전의 파일을 수정하지 않습니다. Flyway는 체크섬으로 기존 파일의 변경을 검사합니다.
 - `V2__auth_refresh_sessions.sql`은 로그인 갱신 토큰의 해시와 만료 시각을 저장하는 테이블을 추가합니다. 기존 DB도 서버 시작 시 V2를 적용해야 합니다.
+- `V3__onboarding_teams.sql`은 2026년 KBO와 K리그1 팀을 추가하고 가입 화면에 표시할 팀을 지정합니다. 기존 이름이 같은 팀은 유지합니다. 로고 URL은 준비되지 않아 빈 값이며, 시즌에 따라 팀 목록을 별도 마이그레이션으로 갱신해야 합니다.
 - 재시작 시 적용 완료한 SQL은 다시 실행하지 않습니다.
 - 기존 테이블이 있는데 Flyway 이력이 없는 DB는 자동 baseline하지 않고 시작을 중단합니다. 기존 데이터가 있다면 백업과 스키마 비교 후 명시적으로 baseline을 계획합니다. 새 개발 환경은 빈 DB로 연결하면 됩니다.
 - Flyway의 `clean`은 비활성화되어 있습니다. MySQL DDL은 실패 시 전체 롤백되지 않을 수 있으므로 실패한 마이그레이션은 오류와 실제 적용 상태를 확인한 뒤 복구합니다.
@@ -140,6 +141,8 @@ CI에서도 테스트를 포함한 전체 빌드를 실행합니다.
 - `POST /auth/{provider}/login`: `accessToken`에 Google ID 토큰 또는 Kakao/Naver 액세스 토큰을 전달합니다. Google ID 토큰의 대상은 서버의 `GOOGLE_CLIENT_ID`와 앱의 `GOOGLE_WEB_CLIENT_ID`가 같아야 합니다.
 - 신규 사용자는 `needProfile=true`인 온보딩 액세스 토큰을 받습니다. `POST /auth/complete-profile`로 프로필을 완성하면 일반 액세스 토큰과 갱신 토큰을 받습니다.
 - `GET /auth/nickname-availability?nickname=...`은 온보딩 액세스 토큰으로 닉네임 사용 가능 여부를 조회하고 `{"available":true}` 또는 `{"available":false}`를 반환합니다. 닉네임은 공백이 아닌 20자 이하 문자열이어야 하며, 실제 프로필 저장 시에도 중복을 검사합니다.
+- `GET /api/teams?league=KBO` 또는 `GET /api/teams?league=KLEAGUE`는 가입 화면에 표시할 팀의 `id`, `name`, `shortName`, `logoUrl` 목록을 반환합니다. 온보딩 또는 일반 액세스 토큰이 필요합니다. `KLEAGUE` 목록은 K리그1입니다.
+- 응원팀 선택은 각각 선택 사항입니다. 마지막에 `POST /auth/complete-profile`의 `favoriteKboTeamId`와 `favoriteKleagueTeamId`로 함께 저장하며, 선택하지 않은 값은 생략하거나 null로 보냅니다.
 - `GET /auth/session`으로 현재 액세스 토큰의 프로필 등록 상태를 확인합니다.
 - `POST /auth/refresh`에 `{"refreshToken":"..."}`을 보내면 새 토큰 쌍을 발급하고 기존 갱신 토큰을 폐기합니다.
 - `POST /auth/logout`에 `{"refreshToken":"..."}`을 보내면 해당 갱신 토큰을 폐기합니다. 온보딩 중에는 `refreshToken`이 없으므로 null을 보낼 수 있습니다. 이미 발급된 액세스 토큰은 만료될 때까지 유효하며 기본 만료 시간은 15분입니다.

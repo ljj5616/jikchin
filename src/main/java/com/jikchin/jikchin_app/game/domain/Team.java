@@ -26,6 +26,9 @@ public class Team {
     @Column(nullable = false, length = 200)
     private String logoUrl;
 
+    @Column(nullable = false)
+    private boolean onboardingSelectable;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "league_id")
     private League league;

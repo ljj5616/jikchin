@@ -10,6 +10,7 @@ import com.jikchin.jikchin_app.game.repository.TeamRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
 import com.jikchin.jikchin_app.user.domain.Profile;
 import com.jikchin.jikchin_app.game.domain.Team;
+import com.jikchin.jikchin_app.game.domain.LeagueCode;
 import com.jikchin.jikchin_app.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,12 +79,18 @@ public class CompleteProfileService {
         if (command.favoriteKboTeamId() != null) {
             kboTeam = teamRepository.findById(command.favoriteKboTeamId())
                     .orElseThrow(() -> new IllegalArgumentException("KBO team not found"));
+            if (kboTeam.getLeague().getCode() != LeagueCode.KBO || !kboTeam.isOnboardingSelectable()) {
+                throw new IllegalArgumentException("team is not in KBO");
+            }
         }
 
         Team kleagueTeam = null;
         if (command.favoriteKleagueTeamId() != null) {
             kleagueTeam = teamRepository.findById(command.favoriteKleagueTeamId())
                     .orElseThrow(() -> new IllegalArgumentException("K League team not found"));
+            if (kleagueTeam.getLeague().getCode() != LeagueCode.KLEAGUE || !kleagueTeam.isOnboardingSelectable()) {
+                throw new IllegalArgumentException("team is not in K League");
+            }
         }
 
         String avatarKey = pickAvatarKey(command.userId(), command.avatarKey());

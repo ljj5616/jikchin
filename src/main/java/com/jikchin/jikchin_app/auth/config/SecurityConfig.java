@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @RequiredArgsConstructor
@@ -35,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         .requestMatchers("/auth/google/login", "/auth/naver/login", "/auth/kakao/login", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers("/auth/complete-profile", "/auth/nickname-availability").hasRole("ONBOARDING")
+                        .requestMatchers(HttpMethod.GET, "/api/teams").hasAnyRole("ONBOARDING", "USER")
                         .requestMatchers("/auth/session").authenticated()
                         .anyRequest().hasRole("USER")
                 )

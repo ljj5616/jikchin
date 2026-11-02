@@ -17,7 +17,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import jakarta.persistence.EntityManager;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -30,7 +33,45 @@ class AuthenticationFlowTest {
     @Autowired ObjectMapper json;
     @Autowired UserRepository users;
     @Autowired TokenProviderPort tokens;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired EntityManager entityManager;
     @MockitoBean OAuthProviderPort oauth;
+
+    @Test
+    void onboardingCanListTeamsAndSaveOnlyTeamsFromTheCorrectLeague() throws Exception {
+        jdbc.update("insert into league (code) values (?)", "KBO");
+        jdbc.update("insert into league (code) values (?)", "KLEAGUE");
+        int kboLeague = jdbc.queryForObject("select id from league where code = ?", Integer.class, "KBO");
+        int footballLeague = jdbc.queryForObject("select id from league where code = ?", Integer.class, "KLEAGUE");
+        jdbc.update("insert into team (name, short_name, logo_url, league_id, onboarding_selectable) values (?, ?, ?, ?, ?)", "야구팀", "야구", "", kboLeague, true);
+        jdbc.update("insert into team (name, short_name, logo_url, league_id, onboarding_selectable) values (?, ?, ?, ?, ?)", "축구팀", "축구", "", footballLeague, true);
+        int kbo = jdbc.queryForObject("select id from team where name = ?", Integer.class, "야구팀");
+        int football = jdbc.queryForObject("select id from team where name = ?", Integer.class, "축구팀");
+        when(oauth.verifyAndGetProviderId("google", "team-token")).thenReturn("team-user");
+        String token = postJson("/auth/google/login", "{\"accessToken\":\"team-token\"}").get("accessToken").asText();
+
+        mvc.perform(get("/api/teams").param("league", "KBO"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/teams").param("league", "KBO").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(kbo)).andExpect(jsonPath("$[0].name").value("야구팀"));
+        mvc.perform(get("/api/teams").param("league", "KLEAGUE").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(football));
+        mvc.perform(get("/api/teams").param("league", "INVALID").header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/auth/complete-profile").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"team-mate\",\"favoriteKboTeamId\":" + football + "}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/auth/complete-profile").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"team-mate\",\"favoriteKboTeamId\":" + kbo +
+                                ",\"favoriteKleagueTeamId\":" + football + "}"))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        assertThat(jdbc.queryForObject("select favorite_kbo_team_id from profile where nickname = ?", Integer.class, "team-mate")).isEqualTo(kbo);
+        assertThat(jdbc.queryForObject("select favorite_kleague_team_id from profile where nickname = ?", Integer.class, "team-mate")).isEqualTo(football);
+    }
 
     @Test
     void nicknameAvailabilityRequiresOnboardingAndUsesProfileValidationRules() throws Exception {
