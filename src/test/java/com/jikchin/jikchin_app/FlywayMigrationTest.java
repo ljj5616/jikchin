@@ -36,9 +36,13 @@ class FlywayMigrationTest {
         var current = flyway.info().current();
 
         assertThat(current).isNotNull();
-        assertThat(current.getVersion().getVersion()).isEqualTo("1");
         assertThat(current.getState()).isEqualTo(MigrationState.SUCCESS);
+        assertThat(flyway.info().applied())
+                .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
+                .extracting(migration -> migration.getVersion().getVersion())
+                .contains("1", "2");
         assertThat(flyway.info().pending()).isEmpty();
+        flyway.validate();
     }
 
     @Test
