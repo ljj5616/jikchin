@@ -40,24 +40,12 @@ public class OAuthProviderAdapter implements OAuthProviderPort {
                         GoogleTokenInfo.class,
                         token
                 );
-                if (info == null || info.sub == null || info.aud == null || !info.aud.equals(googleClientId)) {
+                if (info == null || info.sub == null || info.sub.isBlank() || info.aud == null || !info.aud.equals(googleClientId)) {
                     throw new IllegalArgumentException("invalid google id_token");
                 }
                 return info.sub; // provider user id
             } else {
-                // Access Token 경로 (현재 코드와 동일)
-                HttpHeaders headers = new HttpHeaders();
-                headers.setBearerAuth(token);
-                headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-                HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-                ResponseEntity<GoogleUserinfo> resp = restTemplate.exchange(
-                        "https://www.googleapis.com/oauth2/v3/userinfo",
-                        HttpMethod.GET, entity, GoogleUserinfo.class
-                );
-                GoogleUserinfo body = resp.getBody();
-                if (body == null || body.sub == null) throw new IllegalArgumentException("invalid google access token");
-                return body.sub;
+                throw new IllegalArgumentException("Google ID token required");
             }
         } catch (HttpClientErrorException e) {
             throw new IllegalArgumentException("invalid google token", e);
@@ -83,7 +71,8 @@ public class OAuthProviderAdapter implements OAuthProviderPort {
                     NaverResponse.class
             );
             NaverResponse body = resp.getBody();
-            if (body == null || !"00".equals(body.getResultcode()) || body.getResponse() == null)
+            if (body == null || !"00".equals(body.getResultcode()) || body.getResponse() == null ||
+                    body.getResponse().getId() == null || body.getResponse().getId().isBlank())
                 throw new IllegalArgumentException("invalid naver token");
             return body.getResponse().getId();
         } catch (HttpClientErrorException e) {
@@ -113,9 +102,6 @@ public class OAuthProviderAdapter implements OAuthProviderPort {
     }
 
     // ====== response DTOs (간단 매핑용) ======
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @Data static final class GoogleUserinfo { private String sub; }
-
     @JsonIgnoreProperties(ignoreUnknown = true)
     @Data static final class GoogleTokenInfo { private String sub; private String aud; }
 

@@ -7,6 +7,7 @@ import com.jikchin.jikchin_app.user.controller.UserController;
 import com.jikchin.jikchin_app.auth.dto.SocialLoginCommand;
 import com.jikchin.jikchin_app.auth.dto.SocialLoginResult;
 import com.jikchin.jikchin_app.auth.service.SocialLoginService;
+import com.jikchin.jikchin_app.auth.service.RefreshSessionService;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileCommand;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileResult;
 import com.jikchin.jikchin_app.user.service.CompleteProfileService;
@@ -42,6 +43,7 @@ class ApiContractTest {
     @Mock SocialLoginService login;
     @Mock CompleteProfileService profiles;
     @Mock GetUserService users;
+    @Mock RefreshSessionService refreshSessions;
 
     private MockMvc mvc;
 
@@ -49,7 +51,7 @@ class ApiContractTest {
     void setUp() {
         var conversion = new DefaultFormattingConversionService();
         conversion.addConverter(new OAuthProviderConverter());
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(login, profiles), new UserController(users))
+        mvc = MockMvcBuilders.standaloneSetup(new AuthController(login, profiles, refreshSessions), new UserController(users))
                 .setConversionService(conversion)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();

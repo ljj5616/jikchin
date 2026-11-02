@@ -18,6 +18,7 @@ public class SocialLoginService {
     private final OAuthProviderPort oAuthProviderPort;
     private final TokenProviderPort tokenProviderPort;
     private final UserRepository userRepository;
+    private final RefreshSessionService refreshSessions;
 
     @Transactional
     public SocialLoginResult login(SocialLoginCommand command) {
@@ -31,11 +32,12 @@ public class SocialLoginService {
             // 온보딩 토큰 (needProfile == true)
             String onboardingAccess = tokenProviderPort.issueAccessToken(user.getId(), true);
             return new SocialLoginResult(true, onboardingAccess, null);
-        } else {
+        } else if (user.getStatus() == UserStatus.ACTIVE) {
             // 정상 로그인 토큰 발급
             String access = tokenProviderPort.issueAccessToken(user.getId(), false);
-            String refresh = tokenProviderPort.issueRefreshToken(user.getId());
+            String refresh = refreshSessions.issue(user);
             return new SocialLoginResult(false, access, refresh);
         }
+        throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "account unavailable");
     }
 }

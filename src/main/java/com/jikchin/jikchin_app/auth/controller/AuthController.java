@@ -7,7 +7,9 @@ import com.jikchin.jikchin_app.auth.domain.OAuthProvider;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileHttpRequest;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileHttpResponse;
 import com.jikchin.jikchin_app.auth.dto.SocialLoginCommand;
+import com.jikchin.jikchin_app.auth.dto.SocialLoginResult;
 import com.jikchin.jikchin_app.auth.service.SocialLoginService;
+import com.jikchin.jikchin_app.auth.service.RefreshSessionService;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileCommand;
 import com.jikchin.jikchin_app.user.service.CompleteProfileService;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ public class AuthController {
 
     private final SocialLoginService socialLoginService;
     private final CompleteProfileService completeProfileService;
+    private final RefreshSessionService refreshSessions;
 
     /**
      * 소셜 로그인 엔드포인트
@@ -37,7 +40,12 @@ public class AuthController {
             @RequestBody @Valid AccessTokenRequest body
     ) {
         var cmd = new SocialLoginCommand(provider.name().toLowerCase(), body.getAccessToken());
-        var result = socialLoginService.login(cmd);
+        SocialLoginResult result;
+        try {
+            result = socialLoginService.login(cmd);
+        } catch (IllegalArgumentException e) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid social token");
+        }
         return ResponseEntity.ok(new SocialLoginHttpResponse(
                 result.needProfile(),
                 result.accessToken(),
@@ -45,10 +53,29 @@ public class AuthController {
         ));
     }
 
+    public record RefreshRequest(@jakarta.validation.constraints.NotBlank String refreshToken) {}
+    public record LogoutRequest(String refreshToken) {}
+    public record SessionResponse(boolean needProfile) {}
+
+    @PostMapping("/refresh")
+    public RefreshSessionService.TokenPair refresh(@RequestBody @Valid RefreshRequest request) {
+        return refreshSessions.refresh(request.refreshToken());
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestBody LogoutRequest request) {
+        refreshSessions.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/session")
+    public SessionResponse session(@AuthenticationPrincipal CurrentUser me) {
+        return new SessionResponse(me.needProfile());
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // 프로필 완료: POST /auth/complete-profile
     // 요구: 온보딩 액세스 토큰(needProfile=true)
-    // JWT 필터가 request.setAttribute("userId", ...), ("needProfile", ...) 셋팅했다고 가정
     // ─────────────────────────────────────────────────────────────────────────
     @PostMapping("/complete-profile")
     public ResponseEntity<CompleteProfileHttpResponse> completeProfile(
@@ -70,7 +97,12 @@ public class AuthController {
                 request.favoriteKleagueTeamId()
         );
 
-        var result = completeProfileService.completeProfile(cmd);
+        com.jikchin.jikchin_app.user.dto.CompleteProfileResult result;
+        try {
+            result = completeProfileService.completeProfile(cmd);
+        } catch (IllegalArgumentException e) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
 
         return ResponseEntity.ok(new CompleteProfileHttpResponse(result.accessToken(), result.refreshToken()));
     }

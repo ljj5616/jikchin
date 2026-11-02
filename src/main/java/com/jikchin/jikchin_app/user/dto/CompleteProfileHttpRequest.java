@@ -1,11 +1,12 @@
 package com.jikchin.jikchin_app.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public record CompleteProfileHttpRequest(
-        @NotBlank String nickname,
+        @NotBlank @Size(max = 20) String nickname,
         String avatarKey,
-        String bio,
+        @Size(max = 160) String bio,
         Integer favoriteKboTeamId,
         Integer favoriteKleagueTeamId
 ) {}
