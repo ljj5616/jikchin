@@ -34,7 +34,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         .requestMatchers("/auth/google/login", "/auth/naver/login", "/auth/kakao/login", "/auth/refresh", "/auth/logout").permitAll()
-                        .requestMatchers("/auth/complete-profile").hasRole("ONBOARDING")
+                        .requestMatchers("/auth/complete-profile", "/auth/nickname-availability").hasRole("ONBOARDING")
                         .requestMatchers("/auth/session").authenticated()
                         .anyRequest().hasRole("USER")
                 )

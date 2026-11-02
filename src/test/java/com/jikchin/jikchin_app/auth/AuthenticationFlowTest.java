@@ -33,6 +33,40 @@ class AuthenticationFlowTest {
     @MockitoBean OAuthProviderPort oauth;
 
     @Test
+    void nicknameAvailabilityRequiresOnboardingAndUsesProfileValidationRules() throws Exception {
+        when(oauth.verifyAndGetProviderId("google", "first-token")).thenReturn("nickname-first");
+        when(oauth.verifyAndGetProviderId("google", "second-token")).thenReturn("nickname-second");
+        String first = postJson("/auth/google/login", "{\"accessToken\":\"first-token\"}").get("accessToken").asText();
+        String second = postJson("/auth/google/login", "{\"accessToken\":\"second-token\"}").get("accessToken").asText();
+
+        mvc.perform(get("/auth/nickname-availability").param("nickname", "mate"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/auth/nickname-availability").header("Authorization", "Bearer " + first)
+                        .param("nickname", "mate"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true));
+        mvc.perform(get("/auth/nickname-availability").header("Authorization", "Bearer " + first))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/auth/nickname-availability").header("Authorization", "Bearer " + first)
+                        .param("nickname", "   "))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/auth/nickname-availability").header("Authorization", "Bearer " + first)
+                        .param("nickname", "a".repeat(21)))
+                .andExpect(status().isBadRequest());
+
+        JsonNode profile = json.readTree(mvc.perform(post("/auth/complete-profile")
+                        .header("Authorization", "Bearer " + first).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"mate\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        mvc.perform(get("/auth/nickname-availability").header("Authorization", "Bearer " + second)
+                        .param("nickname", "mate"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/auth/nickname-availability")
+                        .header("Authorization", "Bearer " + profile.get("accessToken").asText())
+                        .param("nickname", "mate"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void onboardingRefreshRotationAndLogout() throws Exception {
         when(oauth.verifyAndGetProviderId("google", "provider-token")).thenReturn("flow-test-id");
         JsonNode login = postJson("/auth/google/login", "{\"accessToken\":\"provider-token\"}");

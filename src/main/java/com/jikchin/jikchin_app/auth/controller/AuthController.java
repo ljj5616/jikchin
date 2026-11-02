@@ -13,6 +13,9 @@ import com.jikchin.jikchin_app.auth.service.RefreshSessionService;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileCommand;
 import com.jikchin.jikchin_app.user.service.CompleteProfileService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +59,14 @@ public class AuthController {
     public record RefreshRequest(@jakarta.validation.constraints.NotBlank String refreshToken) {}
     public record LogoutRequest(String refreshToken) {}
     public record SessionResponse(boolean needProfile) {}
+    public record NicknameAvailabilityResponse(boolean available) {}
+
+    @Operation(summary = "닉네임 사용 가능 여부 확인", description = "온보딩 액세스 토큰이 필요합니다. 최종 중복 검사는 프로필 완성 시 수행합니다.")
+    @GetMapping("/nickname-availability")
+    public NicknameAvailabilityResponse nicknameAvailability(
+            @RequestParam @NotBlank @Size(max = 20) String nickname) {
+        return new NicknameAvailabilityResponse(completeProfileService.isNicknameAvailable(nickname));
+    }
 
     @PostMapping("/refresh")
     public RefreshSessionService.TokenPair refresh(@RequestBody @Valid RefreshRequest request) {

@@ -56,6 +56,11 @@ public class CompleteProfileService {
         return key;
     }
 
+    @Transactional(readOnly = true)
+    public boolean isNicknameAvailable(String nickname) {
+        return !profileRepository.existsByNickname(nickname);
+    }
+
     @Transactional
     public CompleteProfileResult completeProfile(CompleteProfileCommand command) {
         User user = userRepository.findById(command.userId())
