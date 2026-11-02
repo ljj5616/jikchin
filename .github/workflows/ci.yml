@@ -61,7 +61,7 @@ jobs:
         run: docker compose --project-name jikchin-ci --env-file .env.example up --build -d
 
       - name: Verify application starts
-        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-connrefused --retry-max-time 120 --max-time 5 http://127.0.0.1:8080/v3/api-docs -o /dev/null
+        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors --retry-max-time 120 --max-time 5 http://127.0.0.1:8080/v3/api-docs -o /dev/null
 
       - name: Show container logs on failure
         if: failure()
