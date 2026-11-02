@@ -28,12 +28,13 @@ class SocialLoginServiceTest {
     @Mock OAuthProviderPort oauth;
     @Mock TokenProviderPort tokens;
     @Mock UserRepository users;
+    @Mock RefreshSessionService sessions;
 
     private SocialLoginService service;
 
     @BeforeEach
     void setUp() {
-        service = new SocialLoginService(oauth, tokens, users);
+        service = new SocialLoginService(oauth, tokens, users, sessions);
     }
 
     @Test
@@ -54,7 +55,7 @@ class SocialLoginServiceTest {
         verify(users).save(savedUser.capture());
         assertThat(savedUser.getValue().getStatus()).isEqualTo(UserStatus.REGISTERING);
         assertThat(savedUser.getValue().getProviderId()).isEqualTo("provider-id");
-        verify(tokens, never()).issueRefreshToken(any());
+        verify(sessions, never()).issue(any());
     }
 
     @Test
@@ -65,7 +66,7 @@ class SocialLoginServiceTest {
         when(oauth.verifyAndGetProviderId("kakao", "social-token")).thenReturn("provider-id");
         when(users.findByProviderAndProviderId("kakao", "provider-id")).thenReturn(Optional.of(user));
         when(tokens.issueAccessToken(7L, false)).thenReturn("access-token");
-        when(tokens.issueRefreshToken(7L)).thenReturn("refresh-token");
+        when(sessions.issue(user)).thenReturn("refresh-token");
 
         SocialLoginResult result = service.login(new SocialLoginCommand("kakao", "social-token"));
 

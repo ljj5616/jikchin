@@ -3,6 +3,8 @@ package com.jikchin.jikchin_app.user.service;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileCommand;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileResult;
 import com.jikchin.jikchin_app.auth.port.TokenProviderPort;
+import com.jikchin.jikchin_app.auth.service.RefreshSessionService;
+import com.jikchin.jikchin_app.user.domain.UserStatus;
 import com.jikchin.jikchin_app.user.repository.ProfileRepository;
 import com.jikchin.jikchin_app.game.repository.TeamRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
@@ -23,6 +25,7 @@ public class CompleteProfileService {
     private final ProfileRepository profileRepository;
     private final TeamRepository teamRepository;
     private final TokenProviderPort tokenProviderPort;
+    private final RefreshSessionService refreshSessions;
 
     @Value("${app.assets.base-url}")       String baseUrl;
     @Value("${app.assets.default-avatar-key}") String defaultKey;
@@ -58,6 +61,10 @@ public class CompleteProfileService {
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("user not found"));
 
+        if (user.getStatus() != UserStatus.REGISTERING) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        }
+
         if (profileRepository.existsByNickname(command.nickname())) {
             throw new IllegalArgumentException("nickname already taken");
         }
@@ -88,7 +95,7 @@ public class CompleteProfileService {
         profileRepository.save(profile);
 
         String access  = tokenProviderPort.issueAccessToken(user.getId(), false);
-        String refresh = tokenProviderPort.issueRefreshToken(user.getId());
+        String refresh = refreshSessions.issue(user);
 
         return new CompleteProfileResult(access, refresh);
     }

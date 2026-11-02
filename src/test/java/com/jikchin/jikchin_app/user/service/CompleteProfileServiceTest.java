@@ -3,6 +3,7 @@ package com.jikchin.jikchin_app.user.service;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileCommand;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileResult;
 import com.jikchin.jikchin_app.auth.port.TokenProviderPort;
+import com.jikchin.jikchin_app.auth.service.RefreshSessionService;
 import com.jikchin.jikchin_app.user.repository.ProfileRepository;
 import com.jikchin.jikchin_app.game.repository.TeamRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
@@ -36,13 +37,14 @@ class CompleteProfileServiceTest {
     @Mock ProfileRepository profiles;
     @Mock TeamRepository teams;
     @Mock TokenProviderPort tokens;
+    @Mock RefreshSessionService sessions;
 
     private CompleteProfileService service;
     private User user;
 
     @BeforeEach
     void setUp() {
-        service = new CompleteProfileService(users, profiles, teams, tokens);
+        service = new CompleteProfileService(users, profiles, teams, tokens, sessions);
         ReflectionTestUtils.setField(service, "baseUrl", "https://assets.example.test");
         ReflectionTestUtils.setField(service, "defaultKey", "avatars/defaults/default1.jpg");
         user = User.createSocialUser("google", "provider-id");
@@ -123,7 +125,7 @@ class CompleteProfileServiceTest {
 
     private void stubTokens() {
         when(tokens.issueAccessToken(7L, false)).thenReturn("access-token");
-        when(tokens.issueRefreshToken(7L)).thenReturn("refresh-token");
+        when(sessions.issue(user)).thenReturn("refresh-token");
     }
 
     private Profile savedProfile() {

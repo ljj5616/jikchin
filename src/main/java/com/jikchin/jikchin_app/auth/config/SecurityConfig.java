@@ -1,8 +1,8 @@
 package com.jikchin.jikchin_app.auth.config;
 
-import com.jikchin.jikchin_app.auth.security.JwtAttributeFilter;
 import com.jikchin.jikchin_app.auth.security.JwtAuthenticationFilter;
 import com.jikchin.jikchin_app.auth.port.TokenProviderPort;
+import com.jikchin.jikchin_app.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,19 +17,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAttributeFilter jwtAttributeFilter; // @Component 이미 되어 있음
     private final TokenProviderPort tokenProviderPort;
+    private final UserRepository userRepository;
 
     private static final String[] SWAGGER_WHITELIST = {
             "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
     };
-    private static final String[] AUTH_WHITELIST = {
-            "/auth/**"
-    };
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        JwtAuthenticationFilter jwtAuthFilter = new JwtAuthenticationFilter(tokenProviderPort);
+        JwtAuthenticationFilter jwtAuthFilter = new JwtAuthenticationFilter(tokenProviderPort, userRepository);
 
         http
                 .csrf(csrf -> csrf.disable())
@@ -37,11 +33,12 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
-                        .requestMatchers(AUTH_WHITELIST).permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/auth/google/login", "/auth/naver/login", "/auth/kakao/login", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/complete-profile").hasRole("ONBOARDING")
+                        .requestMatchers("/auth/session").authenticated()
+                        .anyRequest().hasRole("USER")
                 )
-                // 순서 중요: Attribute → Authentication → UsernamePasswordAuthenticationFilter
-                .addFilterBefore(jwtAttributeFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(e -> e.authenticationEntryPoint((request, response, exception) -> response.sendError(401)))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
