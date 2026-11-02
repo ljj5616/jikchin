@@ -50,3 +50,23 @@ jobs:
           MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/jikchin_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
           MYSQL_TEST_USERNAME: jikchin_test
           MYSQL_TEST_PASSWORD: ci-test-password
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and start Docker services
+        run: docker compose --project-name jikchin-ci --env-file .env.example up --build -d
+
+      - name: Verify application starts
+        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-connrefused --retry-max-time 120 --max-time 5 http://127.0.0.1:8080/v3/api-docs -o /dev/null
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose --project-name jikchin-ci --env-file .env.example logs --no-color
+
+      - name: Clean up CI containers and test data
+        if: always()
+        run: docker compose --project-name jikchin-ci --env-file .env.example down --volumes

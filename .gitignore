@@ -38,3 +38,8 @@ out/
 
 ### Spring Boot ###
 application-local.yml
+
+### Local Docker settings ###
+/.env
+/.env.*
+!/.env.example
