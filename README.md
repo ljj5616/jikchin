@@ -136,6 +136,13 @@ GitHub Actions의 `docker-smoke` 작업은 예시 설정으로 Docker 이미지�
 
 CI에서도 테스트를 포함한 전체 빌드를 실행합니다.
 
+## 방 생성
+
+- 프로필 등록을 완료한 사용자는 `POST /api/rooms`에 `title`, `gameDate`(YYYY-MM-DD), `stadium`, `homeTeamId`, `awayTeamId`, `capacity`를 전달해 방을 생성합니다. 제목과 경기장은 각각 100자 이하, 날짜는 오늘 이후, 인원은 방장 포함 2~100명입니다. 두 팀은 같은 리그의 서로 다른 선택 가능한 팀이어야 합니다.
+- 생성 시 그룹 채팅과 방장의 참여 정보가 하나의 트랜잭션으로 저장됩니다. 응답에는 방 ID, 채팅방 ID, 방장 ID 및 입력한 경기 정보가 포함됩니다. 한 사용자는 여러 방을 생성할 수 있습니다.
+- `GET /api/rooms/mine`으로 직접 생성한 방을 확인합니다. 경기 일정과 경기장 이름은 사용자가 입력한 정보이며 공식 일정과 대조하지 않습니다. 전체 방 검색·참여와 메시지 송수신은 아직 구현되지 않았습니다.
+- `V4__create_rooms.sql`을 서버 시작 시 적용해야 합니다.
+
 ## 인증 흐름
 
 - `POST /auth/{provider}/login`: `accessToken`에 Google ID 토큰 또는 Kakao/Naver 액세스 토큰을 전달합니다. Google ID 토큰의 대상은 서버의 `GOOGLE_CLIENT_ID`와 앱의 `GOOGLE_WEB_CLIENT_ID`가 같아야 합니다.

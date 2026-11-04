@@ -43,7 +43,7 @@ class FlywayMigrationTest {
         assertThat(flyway.info().applied())
                 .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
                 .extracting(migration -> migration.getVersion().getVersion())
-                .contains("1", "2", "3");
+                .contains("1", "2", "3", "4");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO)).hasSizeGreaterThanOrEqualTo(10);
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KLEAGUE)).hasSizeGreaterThanOrEqualTo(12);
