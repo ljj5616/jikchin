@@ -140,6 +140,7 @@ CI에서도 테스트를 포함한 전체 빌드를 실행합니다.
 
 - `POST /auth/{provider}/login`: `accessToken`에 Google ID 토큰 또는 Kakao/Naver 액세스 토큰을 전달합니다. Google ID 토큰의 대상은 서버의 `GOOGLE_CLIENT_ID`와 앱의 `GOOGLE_WEB_CLIENT_ID`가 같아야 합니다.
 - 신규 사용자는 `needProfile=true`인 온보딩 액세스 토큰을 받습니다. `POST /auth/complete-profile`로 프로필을 완성하면 일반 액세스 토큰과 갱신 토큰을 받습니다.
+- `POST /auth/avatar`는 온보딩 액세스 토큰과 JPEG 파일을 multipart `file`로 받아 S3에 저장하고 `avatarKey`를 반환합니다. 5MB 및 4096×4096 픽셀 이하여야 합니다. `POST /auth/complete-profile`에 이 키와 선택 사항인 160자 이하 `bio`를 전달합니다. 사진을 생략하면 기본 이미지가 사용됩니다.
 - `GET /auth/nickname-availability?nickname=...`은 온보딩 액세스 토큰으로 닉네임 사용 가능 여부를 조회하고 `{"available":true}` 또는 `{"available":false}`를 반환합니다. 닉네임은 공백이 아닌 20자 이하 문자열이어야 하며, 실제 프로필 저장 시에도 중복을 검사합니다.
 - `GET /api/teams?league=KBO` 또는 `GET /api/teams?league=KLEAGUE`는 가입 화면에 표시할 팀의 `id`, `name`, `shortName`, `logoUrl` 목록을 반환합니다. 온보딩 또는 일반 액세스 토큰이 필요합니다. `KLEAGUE` 목록은 K리그1입니다.
 - 응원팀 선택은 각각 선택 사항입니다. 마지막에 `POST /auth/complete-profile`의 `favoriteKboTeamId`와 `favoriteKleagueTeamId`로 함께 저장하며, 선택하지 않은 값은 생략하거나 null로 보냅니다.
@@ -167,3 +168,7 @@ $env:MYSQL_TEST_PASSWORD = '테스트 DB 비밀번호'
 ```
 
 초기 마이그레이션과 JPA 검증, 재실행 시 데이터 보존, 닉네임 고유 제약 조건, 긴 메시지·이모지 저장을 확인합니다. CI에서도 MySQL 8.0 서비스의 전용 DB로 같은 테스트를 실행합니다.
+
+### 프로필 사진 저장 설정
+
+서버에는 `AVATAR_S3_BUCKET`(기본값 `jikchin-avatar-storage`)과 `AWS_REGION`(기본값 `ap-northeast-2`)을 설정합니다. 서버 실행 주체에 해당 버킷의 `avatars/users/*`에 대한 `s3:PutObject` 권한이 필요하며 AWS SDK 기본 자격 증명 체인을 사용합니다. Docker Compose에서는 필요할 때 `.env`에 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, 임시 자격 증명인 경우 `AWS_SESSION_TOKEN`을 설정할 수 있습니다. `ASSETS_BASE_URL`은 저장된 키를 제공하는 이미지 주소와 연결해야 합니다. 실제 S3 버킷과 자격 증명 없이는 사진 업로드가 실패하지만 사진 없이 가입할 수 있습니다. 사진을 변경하거나 가입을 중단하면 사용하지 않는 업로드가 남을 수 있으므로 버킷 운영 시 정리 정책을 마련해야 합니다.

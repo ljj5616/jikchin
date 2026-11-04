@@ -30,6 +30,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Set GOOGLE_CLIENT_ID in .env}
       ASSETS_BASE_URL: ${ASSETS_BASE_URL:?Set ASSETS_BASE_URL in .env}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AVATAR_S3_BUCKET: ${AVATAR_S3_BUCKET:-jikchin-avatar-storage}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       JPA_DDL_AUTO: validate
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
