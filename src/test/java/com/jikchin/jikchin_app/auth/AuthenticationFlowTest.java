@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jikchin.jikchin_app.auth.port.OAuthProviderPort;
 import com.jikchin.jikchin_app.auth.port.TokenProviderPort;
 import com.jikchin.jikchin_app.user.domain.User;
+import com.jikchin.jikchin_app.user.service.AvatarUploadService;
+import org.springframework.mock.web.MockMultipartFile;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import jakarta.persistence.EntityManager;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -36,6 +39,7 @@ class AuthenticationFlowTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManager entityManager;
     @MockitoBean OAuthProviderPort oauth;
+    @MockitoBean AvatarUploadService avatars;
 
     @Test
     void onboardingCanListTeamsAndSaveOnlyTeamsFromTheCorrectLeague() throws Exception {
@@ -104,6 +108,29 @@ class AuthenticationFlowTest {
         mvc.perform(get("/auth/nickname-availability")
                         .header("Authorization", "Bearer " + profile.get("accessToken").asText())
                         .param("nickname", "mate"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void onboardingUploadsAvatarAndSavesPhotoAndBio() throws Exception {
+        when(oauth.verifyAndGetProviderId("google", "avatar-token")).thenReturn("avatar-user");
+        String token = postJson("/auth/google/login", "{\"accessToken\":\"avatar-token\"}").get("accessToken").asText();
+        Long userId = users.findAll().stream().filter(user -> user.getStatus() == UserStatus.REGISTERING)
+                .findFirst().orElseThrow().getId();
+        String key = "avatars/users/" + userId + "/photo.jpg";
+        when(avatars.upload(eq(userId), any())).thenReturn(key);
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[]{1});
+        mvc.perform(multipart("/auth/avatar").file(file)).andExpect(status().isUnauthorized());
+        mvc.perform(multipart("/auth/avatar").file(file).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.avatarKey").value(key));
+        JsonNode profile = json.readTree(mvc.perform(post("/auth/complete-profile")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(java.util.Map.of("nickname", "photo-mate", "avatarKey", key, "bio", "야구 팬"))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        entityManager.flush();
+        assertThat(jdbc.queryForObject("select avatar_key from profile where nickname = ?", String.class, "photo-mate")).isEqualTo(key);
+        assertThat(jdbc.queryForObject("select bio from profile where nickname = ?", String.class, "photo-mate")).isEqualTo("야구 팬");
+        mvc.perform(multipart("/auth/avatar").file(file).header("Authorization", "Bearer " + profile.get("accessToken").asText()))
                 .andExpect(status().isForbidden());
     }
 
