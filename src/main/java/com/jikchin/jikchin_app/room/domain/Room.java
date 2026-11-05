@@ -3,6 +3,7 @@ package com.jikchin.jikchin_app.room.domain;
 import com.jikchin.jikchin_app.chat.domain.ChatThread;
 import com.jikchin.jikchin_app.game.domain.Team;
 import com.jikchin.jikchin_app.global.support.BaseEntity;
+import com.jikchin.jikchin_app.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -28,6 +29,9 @@ public class Room extends BaseEntity {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "chat_thread_id", nullable = false, unique = true)
     private ChatThread chatThread;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "host_id", nullable = false)
+    private User host;
 
     public static Room create(String title, LocalDate gameDate, String stadium, Team homeTeam, Team awayTeam, ChatThread thread) {
         Room room = new Room();
@@ -37,6 +41,11 @@ public class Room extends BaseEntity {
         room.homeTeam = homeTeam;
         room.awayTeam = awayTeam;
         room.chatThread = thread;
+        room.host = thread.getCreatedBy();
         return room;
+    }
+
+    public void transferHostTo(User participant) {
+        this.host = participant;
     }
 }

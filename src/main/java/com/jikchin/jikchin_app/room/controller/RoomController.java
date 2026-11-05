@@ -5,6 +5,7 @@ import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.service.CreateRoomService;
 import com.jikchin.jikchin_app.room.service.GetRoomService;
 import com.jikchin.jikchin_app.room.service.JoinRoomService;
+import com.jikchin.jikchin_app.room.service.LeaveRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ public class RoomController {
     private final CreateRoomService createRoomService;
     private final GetRoomService getRoomService;
     private final JoinRoomService joinRoomService;
+    private final LeaveRoomService leaveRoomService;
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RoomResponse create(@AuthenticationPrincipal CurrentUser user, @Valid @RequestBody CreateRoomRequest request) {
@@ -35,5 +37,10 @@ public class RoomController {
     @PostMapping("/{roomId}/participants")
     public RoomResponse join(@AuthenticationPrincipal CurrentUser user, @PathVariable Long roomId) {
         return joinRoomService.join(user.userId(), roomId);
+    }
+    @DeleteMapping("/{roomId}/participants/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void leave(@AuthenticationPrincipal CurrentUser user, @PathVariable Long roomId) {
+        leaveRoomService.leave(user.userId(), roomId);
     }
 }

@@ -11,6 +11,11 @@ import com.jikchin.jikchin_app.user.repository.ProfileRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
 import com.jikchin.jikchin_app.game.repository.TeamRepository;
 import com.jikchin.jikchin_app.game.domain.LeagueCode;
+import com.jikchin.jikchin_app.room.domain.Room;
+import com.jikchin.jikchin_app.room.dto.CreateRoomRequest;
+import com.jikchin.jikchin_app.room.service.CreateRoomService;
+import com.jikchin.jikchin_app.room.service.JoinRoomService;
+import com.jikchin.jikchin_app.room.service.LeaveRoomService;
 import jakarta.persistence.EntityManager;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationState;
@@ -21,6 +26,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +43,9 @@ class FlywayMigrationTest {
     @Autowired EntityManager entityManager;
     @Autowired TeamRepository teams;
     @Autowired ChatParticipantRepository participants;
+    @Autowired CreateRoomService createRooms;
+    @Autowired JoinRoomService joinRooms;
+    @Autowired LeaveRoomService leaveRooms;
 
     @Test
     void applicationMigratesBeforeJpaValidatesTheSchema() {
@@ -46,7 +56,7 @@ class FlywayMigrationTest {
         assertThat(flyway.info().applied())
                 .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
                 .extracting(migration -> migration.getVersion().getVersion())
-                .contains("1", "2", "3", "4", "5");
+                .contains("1", "2", "3", "4", "5", "6");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO)).hasSizeGreaterThanOrEqualTo(10);
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KLEAGUE)).hasSizeGreaterThanOrEqualTo(12);
@@ -108,5 +118,39 @@ class FlywayMigrationTest {
         entityManager.clear();
 
         assertThat(entityManager.find(ChatMessage.class, message.getId()).getBody()).isEqualTo(body);
+    }
+
+    @Test
+    @Transactional
+    void migratedSchemaSupportsHostTransferAndDeletingTheLastParticipantsRoom() {
+        var host = User.createSocialUser("google", "mysql-room-host");
+        host.activate();
+        users.saveAndFlush(host);
+        var guest = User.createSocialUser("google", "mysql-room-guest");
+        guest.activate();
+        users.saveAndFlush(guest);
+        var selectable = teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO);
+        var room = createRooms.create(host.getId(), new CreateRoomRequest(
+                "같이 직관해요", LocalDate.now(), "잠실", selectable.get(0).getId(), selectable.get(1).getId(), 2));
+        joinRooms.join(guest.getId(), room.id());
+        var message = ChatMessage.text(entityManager.find(ChatThread.class, room.chatThreadId()), host, "안녕하세요");
+        entityManager.persist(message);
+
+        leaveRooms.leave(host.getId(), room.id());
+        entityManager.flush();
+        entityManager.clear();
+        var storedRoom = entityManager.find(Room.class, room.id());
+        assertThat(storedRoom.getHost().getId()).isEqualTo(guest.getId());
+        assertThat(storedRoom.getChatThread().getCreatedBy().getId()).isEqualTo(host.getId());
+        assertThat(participants.countByChatThread_Id(room.chatThreadId())).isEqualTo(1);
+        assertThat(entityManager.find(ChatMessage.class, message.getId())).isNotNull();
+
+        leaveRooms.leave(guest.getId(), room.id());
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(entityManager.find(Room.class, room.id())).isNull();
+        assertThat(entityManager.find(ChatThread.class, room.chatThreadId())).isNull();
+        assertThat(entityManager.find(ChatMessage.class, message.getId())).isNull();
+        assertThat(participants.countByChatThread_Id(room.chatThreadId())).isZero();
     }
 }
