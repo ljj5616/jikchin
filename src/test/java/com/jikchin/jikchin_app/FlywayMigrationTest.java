@@ -18,6 +18,12 @@ import com.jikchin.jikchin_app.room.dto.CreateRoomRequest;
 import com.jikchin.jikchin_app.room.service.CreateRoomService;
 import com.jikchin.jikchin_app.room.service.JoinRoomService;
 import com.jikchin.jikchin_app.room.service.LeaveRoomService;
+import com.jikchin.jikchin_app.moderation.domain.ReportReason;
+import com.jikchin.jikchin_app.moderation.domain.ReportTargetType;
+import com.jikchin.jikchin_app.moderation.domain.ReportStatus;
+import com.jikchin.jikchin_app.moderation.dto.SubmitReportRequest;
+import com.jikchin.jikchin_app.moderation.repository.ReportRepository;
+import com.jikchin.jikchin_app.moderation.service.ReportService;
 import jakarta.persistence.EntityManager;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationState;
@@ -49,6 +55,8 @@ class FlywayMigrationTest {
     @Autowired JoinRoomService joinRooms;
     @Autowired LeaveRoomService leaveRooms;
     @Autowired RoomChatService chat;
+    @Autowired ReportService reporting;
+    @Autowired ReportRepository reports;
 
     @Test
     void applicationMigratesBeforeJpaValidatesTheSchema() {
@@ -59,7 +67,7 @@ class FlywayMigrationTest {
         assertThat(flyway.info().applied())
                 .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
                 .extracting(migration -> migration.getVersion().getVersion())
-                .contains("1", "2", "3", "4", "5", "6", "7");
+                .contains("1", "2", "3", "4", "5", "6", "7", "8");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO)).hasSizeGreaterThanOrEqualTo(10);
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KLEAGUE)).hasSizeGreaterThanOrEqualTo(12);
@@ -181,5 +189,34 @@ class FlywayMigrationTest {
         assertThat(entityManager.find(ChatThread.class, room.chatThreadId())).isNull();
         assertThat(entityManager.find(ChatMessage.class, message.getId())).isNull();
         assertThat(participants.countByChatThread_Id(room.chatThreadId())).isZero();
+    }
+
+    @Test
+    @Transactional
+    void migratedSchemaKeepsReportsAndSnapshotsAfterRoomDeletion() {
+        var host = users.saveAndFlush(User.createSocialUser("google", "mysql-report-host"));
+        profiles.saveAndFlush(Profile.create(host, "신고 대상", "avatars/defaults/default1.jpg", null));
+        var reporter = users.saveAndFlush(User.createSocialUser("google", "mysql-reporter"));
+        profiles.saveAndFlush(Profile.create(reporter, "신고 접수자", "avatars/defaults/default1.jpg", null));
+        var selectable = teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO);
+        var room = createRooms.create(host.getId(), new CreateRoomRequest("신고된 방 🏟️", LocalDate.now(), "잠실",
+                selectable.get(0).getId(), selectable.get(1).getId(), 3));
+        var userReport = reporting.submit(reporter.getId(), ReportTargetType.USER, host.getId(),
+                new SubmitReportRequest(ReportReason.FRAUD, "신고 상세 내용 🏟️", null));
+        String retryKey = java.util.UUID.randomUUID().toString();
+        var request = new SubmitReportRequest(ReportReason.MISLEADING_ROOM_INFO, null, retryKey);
+        var roomReport = reporting.submit(reporter.getId(), ReportTargetType.ROOM, room.id(), request);
+        leaveRooms.leave(host.getId(), room.id());
+        entityManager.flush();
+        entityManager.clear();
+
+        var stored = reports.findById(roomReport.report().id()).orElseThrow();
+        assertThat(stored.getTargetSnapshot()).contains("신고된 방 🏟️");
+        assertThat(stored.getStatus()).isEqualTo(ReportStatus.PENDING);
+        assertThat(stored.getTargetId()).isEqualTo(room.id());
+        assertThat(entityManager.find(Room.class, room.id())).isNull();
+        assertThat(reports.findById(userReport.report().id()).orElseThrow().getDescription()).isEqualTo("신고 상세 내용 🏟️");
+        assertThat(reporting.submit(reporter.getId(), ReportTargetType.ROOM, room.id(), request).report().id())
+                .isEqualTo(roomReport.report().id());
     }
 }

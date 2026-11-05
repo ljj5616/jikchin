@@ -2,6 +2,8 @@ package com.jikchin.jikchin_app.room.service;
 
 import com.jikchin.jikchin_app.chat.domain.ChatParticipant;
 import com.jikchin.jikchin_app.chat.repository.ChatParticipantRepository;
+import com.jikchin.jikchin_app.moderation.service.BlockService;
+import com.jikchin.jikchin_app.moderation.service.BlockedNickname;
 import com.jikchin.jikchin_app.room.domain.Room;
 import com.jikchin.jikchin_app.room.dto.RoomParticipantResponse;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
@@ -16,6 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ import java.util.List;
 public class GetRoomService {
     private final RoomRepository rooms;
     private final ChatParticipantRepository participants;
+    private final BlockService blocks;
 
     @Value("${app.assets.base-url}")
     private String assetsBaseUrl;
@@ -45,11 +49,13 @@ public class GetRoomService {
         return response(findRoom(roomId));
     }
 
-    public List<RoomParticipantResponse> participants(Long roomId) {
-        var thread = findRoom(roomId).getChatThread();
-        Long hostId = thread.getCreatedBy().getId();
+    public List<RoomParticipantResponse> participants(Long viewerId, Long roomId) {
+        var room = findRoom(roomId);
+        var thread = room.getChatThread();
+        Long hostId = room.getHost().getId();
+        var blockedIds = blocks.blockedUserIds(viewerId);
         return participants.findByChatThread_IdOrderByJoinedAtAscIdAsc(thread.getId()).stream()
-                .map(participant -> participantResponse(participant, hostId))
+                .map(participant -> participantResponse(participant, hostId, blockedIds))
                 .toList();
     }
 
@@ -58,14 +64,15 @@ public class GetRoomService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "방을 찾을 수 없습니다."));
     }
 
-    private RoomParticipantResponse participantResponse(ChatParticipant participant, Long hostId) {
+    private RoomParticipantResponse participantResponse(ChatParticipant participant, Long hostId, Set<Long> blockedIds) {
         var user = participant.getUser();
         var profile = user.getProfile();
         String avatarKey = profile == null ? defaultAvatarKey : profile.getAvatarKey();
         String avatarUrl = UriComponentsBuilder.fromUriString(assetsBaseUrl)
                 .pathSegment(avatarKey.split("/"))
                 .build().encode().toUriString();
-        return new RoomParticipantResponse(user.getId(), profile == null ? null : profile.getNickname(),
+        String nickname = BlockedNickname.format(profile == null ? null : profile.getNickname(), blockedIds.contains(user.getId()));
+        return new RoomParticipantResponse(user.getId(), nickname,
                 avatarUrl, user.getId().equals(hostId), participant.getJoinedAt());
     }
 

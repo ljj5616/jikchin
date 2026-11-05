@@ -31,6 +31,8 @@ spring:
     clean-disabled: true
 
 app:
+  reports:
+    enabled: ${REPORTS_ENABLED:true}
   assets:
     base-url: ${ASSETS_BASE_URL}                # 임시 설정. 추후 설정 필요
     default-avatar-key: ${DEFAULT_AVATAR_KEY:avatars/defaults/default1.jpg}

@@ -30,6 +30,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Set GOOGLE_CLIENT_ID in .env}
       ASSETS_BASE_URL: ${ASSETS_BASE_URL:?Set ASSETS_BASE_URL in .env}
+      REPORTS_ENABLED: ${REPORTS_ENABLED:-true}
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       AVATAR_S3_BUCKET: ${AVATAR_S3_BUCKET:-jikchin-avatar-storage}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}

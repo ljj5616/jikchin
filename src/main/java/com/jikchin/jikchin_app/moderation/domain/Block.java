@@ -26,4 +26,11 @@ public class Block extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "blocked_id", nullable = false)
     private User blocked;
+
+    public static Block create(User blocker, User blocked) {
+        Block block = new Block();
+        block.blocker = blocker;
+        block.blocked = blocked;
+        return block;
+    }
 }
