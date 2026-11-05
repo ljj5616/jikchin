@@ -13,6 +13,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RoomRepository extends JpaRepository<Room, Long> {
+    @Override
+    @EntityGraph(attributePaths = {"chatThread", "chatThread.createdBy", "homeTeam", "awayTeam"})
+    Optional<Room> findById(Long id);
+
     @EntityGraph(attributePaths = {"chatThread", "chatThread.createdBy", "homeTeam", "awayTeam"})
     List<Room> findByGameDateGreaterThanEqualOrderByGameDateAscIdAsc(LocalDate date);
 
