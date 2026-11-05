@@ -17,6 +17,7 @@ import com.jikchin.jikchin_app.user.domain.User;
 import com.jikchin.jikchin_app.user.domain.Profile;
 import com.jikchin.jikchin_app.user.repository.ProfileRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
+import com.jikchin.jikchin_app.user.service.WithdrawUserService;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -61,6 +62,7 @@ class ChatWebSocketTest {
     @Autowired CreateRoomService createRooms;
     @Autowired JoinRoomService joinRooms;
     @Autowired LeaveRoomService leaveRooms;
+    @Autowired WithdrawUserService withdrawal;
     @Autowired RoomChatService chat;
     @Autowired BlockService blocking;
     @Autowired ProfileRepository profiles;
@@ -142,6 +144,28 @@ class ChatWebSocketTest {
         var latest = chat.send(host.getId(), room.id(), request("재구독 후"));
         assertThat(rejoined.poll(5, TimeUnit.SECONDS).id()).isEqualTo(latest.id());
         assertThat(received.poll(200, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test
+    void withdrawalRevokesExistingSubscriptionsSendsAndNewConnections() throws Exception {
+        String token = tokens.issueAccessToken(guest.getId(), false);
+        var errors = new LinkedBlockingQueue<Object>();
+        var receiver = connectToken(token, errorHandler(errors)).get(5, TimeUnit.SECONDS);
+        connections.add(receiver);
+        var received = subscribe(receiver, topic());
+        var initial = chat.send(host.getId(), room.id(), request("탈퇴 전"));
+        assertThat(received.poll(5, TimeUnit.SECONDS).id()).isEqualTo(initial.id());
+
+        withdrawal.withdraw(guest.getId());
+
+        chat.send(host.getId(), room.id(), request("탈퇴 후 수신 금지"));
+        assertThat(received.poll(300, TimeUnit.MILLISECONDS)).isNull();
+        receiver.send(sendDestination(), request("탈퇴 후 발신 금지"));
+        assertThat(errors.poll(5, TimeUnit.SECONDS)).isInstanceOf(ChatErrorResponse.class)
+                .extracting(error -> ((ChatErrorResponse) error).status()).isEqualTo(403);
+        assertThatThrownBy(() -> connectToken(token, new StompSessionHandlerAdapter() {}).get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class);
+        assertThat(chat.history(host.getId(), room.id(), null, 50).messages()).hasSize(2);
     }
 
     @Test

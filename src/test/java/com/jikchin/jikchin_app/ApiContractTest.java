@@ -12,6 +12,7 @@ import com.jikchin.jikchin_app.user.dto.CompleteProfileCommand;
 import com.jikchin.jikchin_app.user.dto.CompleteProfileResult;
 import com.jikchin.jikchin_app.user.service.CompleteProfileService;
 import com.jikchin.jikchin_app.user.service.GetUserService;
+import com.jikchin.jikchin_app.user.service.WithdrawUserService;
 import com.jikchin.jikchin_app.user.dto.UserResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ class ApiContractTest {
     @Mock CompleteProfileService profiles;
     @Mock GetUserService users;
     @Mock RefreshSessionService refreshSessions;
+    @Mock WithdrawUserService withdrawal;
 
     private MockMvc mvc;
 
@@ -51,7 +53,7 @@ class ApiContractTest {
     void setUp() {
         var conversion = new DefaultFormattingConversionService();
         conversion.addConverter(new OAuthProviderConverter());
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(login, profiles, refreshSessions), new UserController(users))
+        mvc = MockMvcBuilders.standaloneSetup(new AuthController(login, profiles, refreshSessions), new UserController(users, withdrawal))
                 .setConversionService(conversion)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
