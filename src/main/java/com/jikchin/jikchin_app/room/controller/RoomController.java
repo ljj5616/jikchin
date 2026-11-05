@@ -40,8 +40,8 @@ public class RoomController {
         return getRoomService.detail(roomId);
     }
     @GetMapping("/{roomId}/participants")
-    public List<RoomParticipantResponse> participants(@PathVariable Long roomId) {
-        return getRoomService.participants(roomId);
+    public List<RoomParticipantResponse> participants(@AuthenticationPrincipal CurrentUser user, @PathVariable Long roomId) {
+        return getRoomService.participants(user.userId(), roomId);
     }
     @PostMapping("/{roomId}/participants")
     public RoomResponse join(@AuthenticationPrincipal CurrentUser user, @PathVariable Long roomId) {

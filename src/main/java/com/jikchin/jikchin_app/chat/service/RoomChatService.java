@@ -5,6 +5,8 @@ import com.jikchin.jikchin_app.chat.dto.ChatHistoryResponse;
 import com.jikchin.jikchin_app.chat.dto.ChatMessageResponse;
 import com.jikchin.jikchin_app.chat.dto.SendMessageRequest;
 import com.jikchin.jikchin_app.chat.repository.ChatMessageRepository;
+import com.jikchin.jikchin_app.moderation.service.BlockService;
+import com.jikchin.jikchin_app.moderation.service.BlockedNickname;
 import com.jikchin.jikchin_app.room.repository.RoomRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
 import jakarta.validation.Validator;
@@ -32,6 +34,7 @@ public class RoomChatService {
     private final ChatAccessService access;
     private final ApplicationEventPublisher events;
     private final Validator validator;
+    private final BlockService blocks;
 
     @Value("${app.assets.base-url}") private String assetsBaseUrl;
     @Value("${app.assets.default-avatar-key}") private String defaultAvatarKey;
@@ -70,7 +73,11 @@ public class RoomChatService {
         boolean hasMore = found.size() > size;
         var page = new ArrayList<>(found.subList(0, Math.min(size, found.size())));
         Collections.reverse(page);
-        var responses = page.stream().map(message -> response(roomId, message)).toList();
+        var blockedIds = blocks.blockedUserIds(userId);
+        var responses = page.stream().map(message -> {
+            var response = response(roomId, message);
+            return response.withSenderNickname(BlockedNickname.format(response.senderNickname(), blockedIds.contains(response.senderId())));
+        }).toList();
         return new ChatHistoryResponse(responses, hasMore, hasMore ? responses.get(0).id() : null);
     }
 

@@ -3,6 +3,7 @@ package com.jikchin.jikchin_app.room.service;
 import com.jikchin.jikchin_app.chat.domain.ChatParticipant;
 import com.jikchin.jikchin_app.chat.repository.ChatParticipantRepository;
 import com.jikchin.jikchin_app.chat.repository.ChatMessageRepository;
+import com.jikchin.jikchin_app.moderation.service.BlockService;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.repository.RoomRepository;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
@@ -23,6 +24,7 @@ public class JoinRoomService {
     private final UserRepository users;
     private final ChatParticipantRepository participants;
     private final ChatMessageRepository messages;
+    private final BlockService blocks;
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public RoomResponse join(Long userId, Long roomId) {
@@ -40,6 +42,7 @@ public class JoinRoomService {
         if (participants.existsByChatThread_IdAndUser_Id(thread.getId(), userId)) {
             return RoomResponse.from(room, count);
         }
+        blocks.requireCanJoin(userId, thread.getCreatedBy().getId());
         if (room.getGameDate().isBefore(LocalDate.now())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "경기 날짜가 지난 방에는 참여할 수 없습니다.");
         }

@@ -7,12 +7,15 @@ import com.jikchin.jikchin_app.chat.dto.ChatMessageResponse;
 import com.jikchin.jikchin_app.chat.dto.ChatErrorResponse;
 import com.jikchin.jikchin_app.chat.dto.SendMessageRequest;
 import com.jikchin.jikchin_app.chat.service.RoomChatService;
+import com.jikchin.jikchin_app.moderation.service.BlockService;
 import com.jikchin.jikchin_app.room.dto.CreateRoomRequest;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.service.CreateRoomService;
 import com.jikchin.jikchin_app.room.service.JoinRoomService;
 import com.jikchin.jikchin_app.room.service.LeaveRoomService;
 import com.jikchin.jikchin_app.user.domain.User;
+import com.jikchin.jikchin_app.user.domain.Profile;
+import com.jikchin.jikchin_app.user.repository.ProfileRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +62,8 @@ class ChatWebSocketTest {
     @Autowired JoinRoomService joinRooms;
     @Autowired LeaveRoomService leaveRooms;
     @Autowired RoomChatService chat;
+    @Autowired BlockService blocking;
+    @Autowired ProfileRepository profiles;
     @Autowired PlatformTransactionManager transactions;
     @Autowired SubscriptionTracker tracker;
     private WebSocketStompClient client;
@@ -69,10 +74,12 @@ class ChatWebSocketTest {
 
     @BeforeEach
     void fixture() {
+        jdbc.update("delete from block");
         jdbc.update("delete from chat_message");
         jdbc.update("delete from chat_participant");
         jdbc.update("delete from room");
         jdbc.update("delete from chat_thread");
+        jdbc.update("delete from profile");
         jdbc.update("delete from user");
         jdbc.update("delete from team");
         jdbc.update("delete from league");
@@ -235,6 +242,39 @@ class ChatWebSocketTest {
             executor.shutdownNow();
             assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
         }
+    }
+
+    @Test
+    void liveBlockAndUnblockPersonalizeOnlyTheBlockersMessagesWithoutResubscribing() throws Exception {
+        new TransactionTemplate(transactions).executeWithoutResult(status ->
+                profiles.saveAndFlush(Profile.create(users.findById(host.getId()).orElseThrow(), "방장",
+                        "avatars/defaults/default1.jpg", null)));
+        var observer = user(true);
+        joinRooms.join(observer.getId(), room.id());
+        var sent = subscribe(connect(host), topic());
+        var received = subscribe(connect(guest), topic());
+        var observed = subscribe(connect(observer), topic());
+
+        var original = chat.send(host.getId(), room.id(), request("차단 전"));
+        assertThat(received.poll(5, TimeUnit.SECONDS).senderNickname()).isEqualTo("방장");
+        assertThat(sent.poll(5, TimeUnit.SECONDS).id()).isEqualTo(original.id());
+        assertThat(observed.poll(5, TimeUnit.SECONDS).senderNickname()).isEqualTo("방장");
+
+        blocking.block(guest.getId(), host.getId());
+        var blocked = chat.send(host.getId(), room.id(), request("차단 후 🏟️"));
+        var personalized = received.poll(5, TimeUnit.SECONDS);
+        assertThat(personalized).isNotNull();
+        assertThat(personalized.senderNickname()).isEqualTo("방장(차단)");
+        assertThat(personalized.id()).isEqualTo(blocked.id());
+        assertThat(personalized.body()).isEqualTo("차단 후 🏟️");
+        assertThat(sent.poll(5, TimeUnit.SECONDS).senderNickname()).isEqualTo("방장");
+        assertThat(observed.poll(5, TimeUnit.SECONDS).senderNickname()).isEqualTo("방장");
+
+        blocking.unblock(guest.getId(), host.getId());
+        var restored = chat.send(host.getId(), room.id(), request("차단 해제 후"));
+        assertThat(received.poll(5, TimeUnit.SECONDS).senderNickname()).isEqualTo("방장");
+        assertThat(sent.poll(5, TimeUnit.SECONDS).id()).isEqualTo(restored.id());
+        assertThat(observed.poll(5, TimeUnit.SECONDS).senderNickname()).isEqualTo("방장");
     }
 
     private User user(boolean active) {
