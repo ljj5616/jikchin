@@ -10,6 +10,7 @@ import com.jikchin.jikchin_app.user.domain.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 @Service
 @RequiredArgsConstructor
@@ -20,7 +21,7 @@ public class SocialLoginService {
     private final UserRepository userRepository;
     private final RefreshSessionService refreshSessions;
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public SocialLoginResult login(SocialLoginCommand command) {
         final String provider = command.provider();
         final String providerId = oAuthProviderPort.verifyAndGetProviderId(provider, command.accessToken());

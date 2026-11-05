@@ -38,4 +38,14 @@ List<Room> findByGameDateGreaterThanEqualOrderByGameDateAscIdAsc(LocalDate date)
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :roomId")
     Optional<Room> findByIdForUpdate(@Param("roomId") Long roomId);
+
+    @Query("""
+            select room.id from Room room
+            where room.host.id = :userId or exists (
+                select participant.id from ChatParticipant participant
+                where participant.chatThread = room.chatThread and participant.user.id = :userId
+            )
+            order by room.id
+            """)
+    List<Long> findWithdrawalRoomIds(@Param("userId") Long userId);
 }

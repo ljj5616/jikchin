@@ -72,8 +72,8 @@ public class BlockService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void requireCanJoin(Long userId, Long creatorId) {
-        if (userId.equals(creatorId)) return;
         lockActiveUserAndTarget(userId, creatorId);
+        if (userId.equals(creatorId)) return;
         if (blocks.existsBetween(userId, creatorId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "차단 관계인 사용자가 만든 방에는 참여할 수 없습니다.");
         }
@@ -85,7 +85,7 @@ public class BlockService {
         var second = users.findByIdForUpdate(Math.max(userId, targetId));
         User user = (userId < targetId ? first : second)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        if (user.getStatus() != UserStatus.ACTIVE) {
+        if (users.findStatusById(userId).orElseThrow() != UserStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "프로필 등록을 완료해 주세요.");
         }
         return user;

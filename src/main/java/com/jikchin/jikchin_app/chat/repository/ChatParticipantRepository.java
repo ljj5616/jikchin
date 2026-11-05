@@ -12,6 +12,7 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
     boolean existsByChatThread_IdAndUser_Id(Long threadId, Long userId);
     Optional<ChatParticipant> findByChatThread_IdAndUser_Id(Long threadId, Long userId);
     void deleteByChatThread_IdAndUser_Id(Long threadId, Long userId);
+    void deleteByUser_Id(Long userId);
     Optional<ChatParticipant> findFirstByChatThread_IdAndUser_IdNotOrderByJoinedAtAscIdAsc(Long threadId, Long userId);
 
     @EntityGraph(attributePaths = {"user", "user.profile"})

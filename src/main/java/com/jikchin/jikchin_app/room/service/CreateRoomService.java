@@ -10,10 +10,12 @@ import com.jikchin.jikchin_app.room.dto.CreateRoomRequest;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.repository.RoomRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
+import com.jikchin.jikchin_app.user.domain.UserStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -25,9 +27,12 @@ public class CreateRoomService {
     private final ChatParticipantRepository participants;
     private final RoomRepository rooms;
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public RoomResponse create(Long userId, CreateRoomRequest request) {
-        var user = users.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        var user = users.findByIdForUpdate(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        if (users.findStatusById(userId).orElseThrow() != UserStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "프로필 등록을 완료해 주세요.");
+        }
         var home = teams.findById(request.homeTeamId()).orElseThrow(() -> invalidTeam());
         var away = teams.findById(request.awayTeamId()).orElseThrow(() -> invalidTeam());
         if (home.getId().equals(away.getId()) || !home.getLeague().getId().equals(away.getLeague().getId())

@@ -4,6 +4,7 @@ import com.jikchin.jikchin_app.moderation.domain.Block;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -13,6 +14,10 @@ public interface BlockRepository extends JpaRepository<Block, Long> {
     boolean existsByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
 
     void deleteByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
+
+    @Modifying
+    @Query("delete from Block b where b.blocker.id = :userId or b.blocked.id = :userId")
+    void deleteAllForUser(@Param("userId") Long userId);
 
     @EntityGraph(attributePaths = {"blocked", "blocked.profile"})
     List<Block> findByBlocker_IdOrderByCreatedAtDescIdDesc(Long blockerId);

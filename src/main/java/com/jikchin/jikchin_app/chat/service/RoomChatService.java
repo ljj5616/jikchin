@@ -9,6 +9,7 @@ import com.jikchin.jikchin_app.moderation.service.BlockService;
 import com.jikchin.jikchin_app.moderation.service.BlockedNickname;
 import com.jikchin.jikchin_app.room.repository.RoomRepository;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
+import com.jikchin.jikchin_app.user.domain.UserStatus;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -88,7 +89,8 @@ public class RoomChatService {
         String avatarUrl = UriComponentsBuilder.fromUriString(assetsBaseUrl)
                 .pathSegment(avatarKey.split("/")).build().encode().toUriString();
         return new ChatMessageResponse(message.getId(), roomId, message.getChatThread().getId(), sender.getId(),
-                profile == null ? null : profile.getNickname(), avatarUrl, message.getType(), message.getBody(),
+                sender.getStatus() == UserStatus.DELETED ? "탈퇴한 회원" : profile == null ? null : profile.getNickname(),
+                avatarUrl, message.getType(), message.getBody(),
                 message.getClientMessageId(), message.getCreatedAt());
     }
 

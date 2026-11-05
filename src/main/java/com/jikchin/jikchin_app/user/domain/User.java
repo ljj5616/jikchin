@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Getter
@@ -56,5 +57,12 @@ public class User extends BaseEntity {
 
     public void activate() {
         this.status = UserStatus.ACTIVE;
+    }
+
+    public void withdraw() {
+        this.status = UserStatus.DELETED;
+        this.provider = "deleted";
+        this.providerId = UUID.randomUUID().toString();
+        this.profile = null;
     }
 }
