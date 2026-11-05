@@ -10,6 +10,6 @@ public record RoomResponse(Long id, Long chatThreadId, String title, LocalDate g
         var thread = room.getChatThread();
         return new RoomResponse(room.getId(), thread.getId(), room.getTitle(), room.getGameDate(), room.getStadium(),
                 room.getHomeTeam().getId(), room.getHomeTeam().getName(), room.getAwayTeam().getId(), room.getAwayTeam().getName(),
-                thread.getCapacity(), thread.getCreatedBy().getId(), participantCount);
+                thread.getCapacity(), room.getHost().getId(), participantCount);
     }
 }
