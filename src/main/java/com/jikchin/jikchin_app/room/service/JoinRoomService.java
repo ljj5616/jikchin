@@ -2,6 +2,7 @@ package com.jikchin.jikchin_app.room.service;
 
 import com.jikchin.jikchin_app.chat.domain.ChatParticipant;
 import com.jikchin.jikchin_app.chat.repository.ChatParticipantRepository;
+import com.jikchin.jikchin_app.chat.repository.ChatMessageRepository;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.repository.RoomRepository;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
@@ -21,6 +22,7 @@ public class JoinRoomService {
     private final RoomRepository rooms;
     private final UserRepository users;
     private final ChatParticipantRepository participants;
+    private final ChatMessageRepository messages;
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public RoomResponse join(Long userId, Long roomId) {
@@ -45,7 +47,7 @@ public class JoinRoomService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "방 정원이 가득 찼습니다.");
         }
 
-        participants.save(ChatParticipant.join(thread, user));
+        participants.save(ChatParticipant.join(thread, user, messages.latestId(thread.getId())));
         return RoomResponse.from(room, count + 1);
     }
 }

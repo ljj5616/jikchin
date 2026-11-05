@@ -21,6 +21,9 @@ public class ChatParticipant {
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
+    @Column(nullable = false)
+    private Long visibleAfterMessageId = 0L;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "chat_thread_id", nullable = false)
     private ChatThread chatThread;
@@ -30,10 +33,15 @@ public class ChatParticipant {
     private User user;
 
     public static ChatParticipant join(ChatThread thread, User user) {
+        return join(thread, user, 0L);
+    }
+
+    public static ChatParticipant join(ChatThread thread, User user, Long visibleAfterMessageId) {
         ChatParticipant participant = new ChatParticipant();
         participant.chatThread = thread;
         participant.user = user;
         participant.joinedAt = LocalDateTime.now();
+        participant.visibleAfterMessageId = visibleAfterMessageId;
 
         return participant;
     }
