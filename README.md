@@ -151,6 +151,14 @@ CI에서도 테스트를 포함한 전체 빌드를 실행합니다.
 - 존재하지 않는 방은 `404`, 정원이 찼거나 경기 날짜가 지난 방에 새로 참여하려는 요청은 `409`를 반환합니다. 인증이 없으면 `401`, 프로필 등록 전이면 `403`입니다.
 - 동시 참여 요청은 방 단위 DB 잠금으로 처리하고, 참여 인원 조회에는 `READ_COMMITTED`를 사용합니다. 방장 포함 정원을 초과하지 않으며, `(chat_thread_id, user_id)` 고유 제약 조건으로 중복 참여를 방지합니다. `V5__unique_chat_participants.sql`은 서버 시작 시 자동 적용됩니다.
 
+## 방 상세·참여자 조회
+
+- `GET /api/rooms/{roomId}`는 방 ID, 채팅방 ID, 제목, 경기 날짜·경기장, 홈·원정 팀 ID와 이름, 최대 인원, 방장 ID, 현재 참여 인원을 반환합니다. 방 생성·목록 응답과 같은 `RoomResponse` 형식입니다.
+- `GET /api/rooms/{roomId}/participants`는 해당 방의 참여자 목록을 참여 시각 순서로 반환합니다. 참여 시각이 같으면 참여 기록 ID 순서로 정렬합니다. 각 항목은 `userId`, `nickname`, `avatarUrl`, `host`(방장 여부), `joinedAt`을 포함합니다.
+- 두 API 모두 프로필 등록을 완료한 사용자가 참여 전에도 조회할 수 있습니다. 경기 날짜가 지났거나 정원이 찬 방도 조회할 수 있습니다. 조회만으로 참여 정보가 생성되지 않습니다.
+- 사진 URL은 `ASSETS_BASE_URL`과 저장된 사진 키로 구성합니다. 프로필이 없는 기존 참여 기록도 목록에 포함하며, 이 경우 `nickname`은 null이고 기본 사진 URL을 반환합니다.
+- 존재하지 않는 방은 `404`, 인증이 없으면 `401`, 프로필 등록 전이면 `403`입니다. 기존 테이블을 사용하므로 추가 DB 마이그레이션은 없습니다.
+
 ## 인증 흐름
 
 - `POST /auth/{provider}/login`: `accessToken`에 Google ID 토큰 또는 Kakao/Naver 액세스 토큰을 전달합니다. Google ID 토큰의 대상은 서버의 `GOOGLE_CLIENT_ID`와 앱의 `GOOGLE_WEB_CLIENT_ID`가 같아야 합니다.
