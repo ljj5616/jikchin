@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(name = "uq_chat_participant_thread_user", columnNames = {"chat_thread_id", "user_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChatParticipant {

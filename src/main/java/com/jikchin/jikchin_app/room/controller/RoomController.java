@@ -3,6 +3,8 @@ import com.jikchin.jikchin_app.auth.security.CurrentUser;
 import com.jikchin.jikchin_app.room.dto.CreateRoomRequest;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.service.CreateRoomService;
+import com.jikchin.jikchin_app.room.service.GetRoomService;
+import com.jikchin.jikchin_app.room.service.JoinRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,13 +17,23 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RoomController {
     private final CreateRoomService createRoomService;
+    private final GetRoomService getRoomService;
+    private final JoinRoomService joinRoomService;
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RoomResponse create(@AuthenticationPrincipal CurrentUser user, @Valid @RequestBody CreateRoomRequest request) {
         return createRoomService.create(user.userId(), request);
     }
+    @GetMapping
+    public List<RoomResponse> list() {
+        return getRoomService.list();
+    }
     @GetMapping("/mine")
     public List<RoomResponse> mine(@AuthenticationPrincipal CurrentUser user) {
-        return createRoomService.mine(user.userId());
+        return getRoomService.mine(user.userId());
+    }
+    @PostMapping("/{roomId}/participants")
+    public RoomResponse join(@AuthenticationPrincipal CurrentUser user, @PathVariable Long roomId) {
+        return joinRoomService.join(user.userId(), roomId);
     }
 }

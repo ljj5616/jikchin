@@ -1,7 +1,9 @@
 package com.jikchin.jikchin_app;
 
 import com.jikchin.jikchin_app.chat.domain.ChatMessage;
+import com.jikchin.jikchin_app.chat.domain.ChatParticipant;
 import com.jikchin.jikchin_app.chat.domain.ChatThread;
+import com.jikchin.jikchin_app.chat.repository.ChatParticipantRepository;
 import com.jikchin.jikchin_app.user.domain.Profile;
 import com.jikchin.jikchin_app.user.domain.User;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
@@ -33,6 +35,7 @@ class FlywayMigrationTest {
     @Autowired ProfileRepository profiles;
     @Autowired EntityManager entityManager;
     @Autowired TeamRepository teams;
+    @Autowired ChatParticipantRepository participants;
 
     @Test
     void applicationMigratesBeforeJpaValidatesTheSchema() {
@@ -43,7 +46,7 @@ class FlywayMigrationTest {
         assertThat(flyway.info().applied())
                 .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
                 .extracting(migration -> migration.getVersion().getVersion())
-                .contains("1", "2", "3", "4");
+                .contains("1", "2", "3", "4", "5");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO)).hasSizeGreaterThanOrEqualTo(10);
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KLEAGUE)).hasSizeGreaterThanOrEqualTo(12);
@@ -77,6 +80,18 @@ class FlywayMigrationTest {
 
         assertThatThrownBy(() -> profiles.saveAndFlush(
                 Profile.create(second, "same-nickname", "avatars/defaults/default1.jpg", null)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @Transactional
+    void migrationEnforcesUniqueChatMembership() {
+        User user = users.saveAndFlush(User.createSocialUser("google", "unique-chat-membership"));
+        ChatThread thread = ChatThread.createGroup(user, 4);
+        entityManager.persist(thread);
+        participants.saveAndFlush(ChatParticipant.join(thread, user));
+
+        assertThatThrownBy(() -> participants.saveAndFlush(ChatParticipant.join(thread, user)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
