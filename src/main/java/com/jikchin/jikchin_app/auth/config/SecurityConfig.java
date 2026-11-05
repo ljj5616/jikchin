@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                        // The STOMP CONNECT frame authenticates the WebSocket session.
+                        .requestMatchers(HttpMethod.GET, "/ws/chat").permitAll()
                         .requestMatchers("/auth/google/login", "/auth/naver/login", "/auth/kakao/login", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers("/auth/complete-profile", "/auth/nickname-availability", "/auth/avatar").hasRole("ONBOARDING")
                         .requestMatchers(HttpMethod.GET, "/api/teams").hasAnyRole("ONBOARDING", "USER")

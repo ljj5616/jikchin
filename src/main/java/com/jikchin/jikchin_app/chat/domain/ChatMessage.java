@@ -14,8 +14,9 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(indexes = {
+@Table(uniqueConstraints = @UniqueConstraint(name = "uq_msg_client", columnNames = {"chat_thread_id", "sender_id", "client_message_id"}), indexes = {
         @Index(name = "idx_msg_thread", columnList = "chat_thread_id"),
+        @Index(name = "idx_msg_thread_id", columnList = "chat_thread_id,id"),
         @Index(name = "idx_msg_sender", columnList = "sender_id")
 })
 public class ChatMessage extends BaseEntity {
@@ -27,6 +28,9 @@ public class ChatMessage extends BaseEntity {
     @Lob
     @Column(nullable = false, columnDefinition = "longtext")
     private String body;
+
+    @Column(length = 36)
+    private String clientMessageId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -61,6 +65,12 @@ public class ChatMessage extends BaseEntity {
         chatMessage.type= MessageType.TEXT;
 
         return chatMessage;
+    }
+
+    public static ChatMessage text(ChatThread thread, User user, String body, String clientMessageId) {
+        ChatMessage message = text(thread, user, body);
+        message.clientMessageId = clientMessageId;
+        return message;
     }
 
     public static ChatMessage image(ChatThread thread, User user, String caption) {

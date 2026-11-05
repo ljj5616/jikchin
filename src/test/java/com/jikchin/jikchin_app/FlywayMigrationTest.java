@@ -4,6 +4,8 @@ import com.jikchin.jikchin_app.chat.domain.ChatMessage;
 import com.jikchin.jikchin_app.chat.domain.ChatParticipant;
 import com.jikchin.jikchin_app.chat.domain.ChatThread;
 import com.jikchin.jikchin_app.chat.repository.ChatParticipantRepository;
+import com.jikchin.jikchin_app.chat.dto.SendMessageRequest;
+import com.jikchin.jikchin_app.chat.service.RoomChatService;
 import com.jikchin.jikchin_app.user.domain.Profile;
 import com.jikchin.jikchin_app.user.domain.User;
 import com.jikchin.jikchin_app.user.domain.UserStatus;
@@ -46,6 +48,7 @@ class FlywayMigrationTest {
     @Autowired CreateRoomService createRooms;
     @Autowired JoinRoomService joinRooms;
     @Autowired LeaveRoomService leaveRooms;
+    @Autowired RoomChatService chat;
 
     @Test
     void applicationMigratesBeforeJpaValidatesTheSchema() {
@@ -56,7 +59,7 @@ class FlywayMigrationTest {
         assertThat(flyway.info().applied())
                 .filteredOn(migration -> migration.getVersion() != null && migration.getState() == MigrationState.SUCCESS)
                 .extracting(migration -> migration.getVersion().getVersion())
-                .contains("1", "2", "3", "4", "5", "6");
+                .contains("1", "2", "3", "4", "5", "6", "7");
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO)).hasSizeGreaterThanOrEqualTo(10);
         assertThat(teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KLEAGUE)).hasSizeGreaterThanOrEqualTo(12);
@@ -118,6 +121,32 @@ class FlywayMigrationTest {
         entityManager.clear();
 
         assertThat(entityManager.find(ChatMessage.class, message.getId()).getBody()).isEqualTo(body);
+    }
+
+    @Test
+    @Transactional
+    void migratedSchemaSupportsChatVisibilityAndIdempotentSends() {
+        var host = User.createSocialUser("google", "mysql-chat-host");
+        host.activate();
+        users.saveAndFlush(host);
+        var guest = User.createSocialUser("google", "mysql-chat-guest");
+        guest.activate();
+        users.saveAndFlush(guest);
+        var selectable = teams.findByLeague_CodeAndOnboardingSelectableTrueOrderByNameAsc(LeagueCode.KBO);
+        var room = createRooms.create(host.getId(), new CreateRoomRequest("채팅", LocalDate.now(), "잠실",
+                selectable.get(0).getId(), selectable.get(1).getId(), 3));
+        var old = chat.send(host.getId(), room.id(), new SendMessageRequest("참여 전", java.util.UUID.randomUUID().toString()));
+        joinRooms.join(guest.getId(), room.id());
+        var request = new SendMessageRequest("이모지도 저장 🏟️", java.util.UUID.randomUUID().toString());
+        var visible = chat.send(host.getId(), room.id(), request);
+        assertThat(chat.send(host.getId(), room.id(), request).id()).isEqualTo(visible.id());
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(participants.findByChatThread_IdAndUser_Id(room.chatThreadId(), guest.getId()).orElseThrow()
+                .getVisibleAfterMessageId()).isEqualTo(old.id());
+        assertThat(chat.history(guest.getId(), room.id(), null, 50).messages())
+                .extracting(message -> message.id()).containsExactly(visible.id());
+        assertThat(entityManager.find(ChatMessage.class, visible.id()).getClientMessageId()).isEqualTo(request.clientMessageId());
     }
 
     @Test
