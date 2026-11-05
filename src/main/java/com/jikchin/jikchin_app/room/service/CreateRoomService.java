@@ -15,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -36,19 +35,7 @@ public class CreateRoomService {
         var thread = threads.save(ChatThread.createGroup(user, request.capacity()));
         participants.save(ChatParticipant.join(thread, user));
         var room = rooms.save(Room.create(request.title().trim(), request.gameDate(), request.stadium().trim(), home, away, thread));
-        return response(room, 1);
-    }
-    @Transactional(readOnly = true)
-    public List<RoomResponse> mine(Long userId) {
-        return rooms.findByChatThread_CreatedBy_IdOrderByCreatedAtDesc(userId).stream()
-                .map(room -> response(room, participants.countByChatThread_Id(room.getChatThread().getId())))
-                .toList();
-    }
-    private RoomResponse response(Room room, long count) {
-        var thread = room.getChatThread();
-        return new RoomResponse(room.getId(), thread.getId(), room.getTitle(), room.getGameDate(), room.getStadium(),
-                room.getHomeTeam().getId(), room.getHomeTeam().getName(), room.getAwayTeam().getId(), room.getAwayTeam().getName(),
-                thread.getCapacity(), thread.getCreatedBy().getId(), count);
+        return RoomResponse.from(room, 1);
     }
     private ResponseStatusException invalidTeam() {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, "같은 리그의 서로 다른 팀을 선택해 주세요.");
