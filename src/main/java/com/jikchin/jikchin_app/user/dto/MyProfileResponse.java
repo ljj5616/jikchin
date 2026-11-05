@@ -19,7 +19,7 @@ public record MyProfileResponse(
     }
 
     public record FavoriteTeamResponse(Integer id, String name, String shortName, String logoUrl) {
-        private static FavoriteTeamResponse from(Team team) {
+        public static FavoriteTeamResponse from(Team team) {
             return team == null ? null : new FavoriteTeamResponse(team.getId(), team.getName(),
                     team.getShortName(), team.getLogoUrl());
         }
