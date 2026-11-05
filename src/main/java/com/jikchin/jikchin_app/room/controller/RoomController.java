@@ -1,6 +1,7 @@
 package com.jikchin.jikchin_app.room.controller;
 import com.jikchin.jikchin_app.auth.security.CurrentUser;
 import com.jikchin.jikchin_app.room.dto.CreateRoomRequest;
+import com.jikchin.jikchin_app.room.dto.RoomParticipantResponse;
 import com.jikchin.jikchin_app.room.dto.RoomResponse;
 import com.jikchin.jikchin_app.room.service.CreateRoomService;
 import com.jikchin.jikchin_app.room.service.GetRoomService;
@@ -33,6 +34,14 @@ public class RoomController {
     @GetMapping("/mine")
     public List<RoomResponse> mine(@AuthenticationPrincipal CurrentUser user) {
         return getRoomService.mine(user.userId());
+    }
+    @GetMapping("/{roomId}")
+    public RoomResponse detail(@PathVariable Long roomId) {
+        return getRoomService.detail(roomId);
+    }
+    @GetMapping("/{roomId}/participants")
+    public List<RoomParticipantResponse> participants(@PathVariable Long roomId) {
+        return getRoomService.participants(roomId);
     }
     @PostMapping("/{roomId}/participants")
     public RoomResponse join(@AuthenticationPrincipal CurrentUser user, @PathVariable Long roomId) {

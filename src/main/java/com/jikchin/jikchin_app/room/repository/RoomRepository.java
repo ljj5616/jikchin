@@ -13,8 +13,16 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RoomRepository extends JpaRepository<Room, Long> {
-    @EntityGraph(attributePaths = {"chatThread", "host", "homeTeam", "awayTeam"})
-    List<Room> findByGameDateGreaterThanEqualOrderByGameDateAscIdAsc(LocalDate date);
+@Override
+@EntityGraph(attributePaths = {
+        "chatThread", "host", "homeTeam", "awayTeam"
+})
+Optional<Room> findById(Long id);
+
+@EntityGraph(attributePaths = {
+        "chatThread", "host", "homeTeam", "awayTeam"
+})
+List<Room> findByGameDateGreaterThanEqualOrderByGameDateAscIdAsc(LocalDate date);
 
     @EntityGraph(attributePaths = {"chatThread", "host", "homeTeam", "awayTeam"})
     @Query("""
