@@ -183,6 +183,51 @@ CI에서도 테스트를 포함한 전체 빌드를 실행합니다.
 
 갱신 토큰 원문은 서버 DB에 저장하지 않습니다. Google/Kakao/Naver의 실제 SDK 등록 정보 및 계정 설정을 사용한 기기별 로그인 검증은 별도로 필요합니다.
 
+## 마이페이지 프로필
+
+마이페이지 API는 프로필 등록을 완료한 회원의 일반 액세스 토큰(`Authorization: Bearer ...`)이 필요합니다. 인증이 없거나 유효하지 않으면 `401`, 온보딩 토큰이면 `403`입니다. 요청의 회원 ID가 아닌 인증된 본인의 ID로 조회·수정합니다. 직관 기록과 포인트는 이번 구현에 포함하지 않습니다.
+
+| 메서드 | 경로 | 기능 |
+| --- | --- | --- |
+| `GET` | `/users/me/profile` | 본인 프로필과 응원팀 조회 |
+| `PUT` | `/users/me/profile` | 본인 프로필 전체 수정 |
+| `GET` | `/users/me/nickname-availability?nickname=...` | 본인을 제외한 닉네임 중복 확인 |
+| `POST` | `/users/me/avatar` | 회원 프로필 사진 업로드 |
+
+기존 `GET /users/me`의 `id`, `nickname` 응답은 유지합니다. 새 프로필 조회·수정 응답은 다음과 같습니다. 응원팀은 `id`, `name`, `shortName`, `logoUrl`을 포함하며 미선택이면 null입니다.
+
+```json
+{
+  "id": 7,
+  "nickname": "직관친구",
+  "avatarKey": "avatars/defaults/default1.jpg",
+  "avatarUrl": "https://assets.example.com/avatars/defaults/default1.jpg",
+  "bio": "같이 직관해요",
+  "favoriteKboTeam": null,
+  "favoriteKleagueTeam": null
+}
+```
+
+`PUT /users/me/profile` 요청 예시입니다. `nickname`은 공백이 아닌 20자 이하, `bio`는 160자 이하입니다. 닉네임과 소개의 앞뒤 공백은 제거하며, 빈 소개는 null로 저장합니다.
+
+```json
+{
+  "nickname": "직관친구",
+  "avatarKey": "avatars/users/7/업로드로-발급된-키.jpg",
+  "bio": "이번 주말 함께 응원해요",
+  "favoriteKboTeamId": null,
+  "favoriteKleagueTeamId": null
+}
+```
+
+- 전체 교체 방식이므로 `avatarKey`를 생략하거나 null로 전달하면 기본 사진으로 돌아갑니다. 사진을 유지하려면 조회 응답의 `avatarKey`를 그대로 전달합니다. `bio`와 두 응원팀 ID를 생략하거나 null로 전달하면 해당 값을 지웁니다.
+- 응원팀 ID는 기존 `GET /api/teams?league=KBO`와 `GET /api/teams?league=KLEAGUE` 목록에서 선택합니다. 존재하지 않는 팀, 다른 리그의 팀, 선택 불가능한 팀은 `400`입니다.
+- 닉네임 중복 확인은 `{"available":true}` 또는 `{"available":false}`를 반환합니다. 현재 본인 닉네임은 사용 가능합니다. 최종 저장에서도 검사하고, 다른 회원과 중복되면 동시 저장을 포함해 `409`를 반환합니다.
+- 사진 업로드는 multipart `file`에 5MB 및 4096×4096 픽셀 이하 JPEG를 전달합니다. 반환된 `{"avatarKey":"avatars/users/7/...jpg"}`를 프로필 수정 요청에 넣어야 사진이 적용됩니다. 실제 S3 설정이 필요하며, 업로드만으로 프로필이 변경되지는 않습니다.
+- 사진 키는 본인의 `avatars/users/{본인 ID}/...` 또는 기본 사진 경로만 허용합니다. URL, 다른 회원의 키, 경로 이동 문자는 `400`입니다. 입력 검증 실패도 `400`, 프로필 없는 기존 회원의 조회·수정은 `404`입니다.
+- 로그아웃은 기존 `POST /auth/logout`에 `{"refreshToken":"..."}`을 전달합니다. 성공하면 `204`이며 앱은 보관 중인 토큰을 지워야 합니다.
+- 기존 테이블을 사용하므로 DB 마이그레이션은 추가하지 않습니다. 사진 변경·초기화 시 이전 S3 파일은 자동 삭제하지 않습니다.
+
 ### MySQL 마이그레이션 통합 테스트
 
 H2 테스트는 Flyway를 비활성화하고 JPA로 테스트 스키마를 생성합니다. 실제 MySQL 마이그레이션은 별도의 `mysqlTest` 태스크로 검증합니다. 이 테스트는 사용자·프로필 데이터를 저장하므로 일반 개발 DB와 분리된 테스트 전용 DB를 사용합니다.

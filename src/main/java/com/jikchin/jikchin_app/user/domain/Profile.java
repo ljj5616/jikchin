@@ -78,4 +78,20 @@ public class Profile extends BaseEntity {
         this.favoriteKleagueTeam = kleague;
     }
 
+    public void updateProfile(String nickname, String avatarKey, String bio, Team kbo, Team kleague) {
+        if (nickname == null || nickname.isBlank() || nickname.length() > 20) {
+            throw new IllegalArgumentException("nickname must be between 1 and 20 characters");
+        }
+        if (avatarKey == null || avatarKey.isBlank() || avatarKey.length() > 200) {
+            throw new IllegalArgumentException("invalid avatar key");
+        }
+        if (bio != null && bio.length() > 160) {
+            throw new IllegalArgumentException("bio must be at most 160 characters");
+        }
+        this.nickname = nickname;
+        this.avatarKey = avatarKey;
+        this.bio = bio;
+        chooseFavoriteTeams(kbo, kleague);
+    }
+
 }
