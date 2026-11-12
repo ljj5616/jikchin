@@ -3,6 +3,7 @@ package com.jikchin.jikchin_app.auth.config;
 import com.jikchin.jikchin_app.auth.security.JwtAuthenticationFilter;
 import com.jikchin.jikchin_app.auth.port.TokenProviderPort;
 import com.jikchin.jikchin_app.user.repository.UserRepository;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         // The STOMP CONNECT frame authenticates the WebSocket session.
                         .requestMatchers(HttpMethod.GET, "/ws/chat").permitAll()
