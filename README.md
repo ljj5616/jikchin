@@ -124,6 +124,14 @@ docker compose down
 
 GitHub Actions의 `docker-smoke` 작업은 예시 설정으로 Docker 이미지와 별도의 MySQL을 실행하고 API 문서가 응답하는지 확인합니다. 이 작업은 CI의 임시 DB를 사용하며 실행이 끝나면 정리합니다.
 
+### CI 이미지 업로드
+
+`main` 브랜치에 push되거나 `main`에서 CI를 수동 실행하면, 빌드·테스트와 Docker 기동 검증이 모두 성공한 후 `publish-image` 작업이 이미지를 ECR의 `jikchin-app` 저장소에 업로드합니다. pull request와 다른 브랜치에서는 기존 검증만 실행하며 이미지를 업로드하지 않습니다. 이 작업은 EC2에 배포하지 않습니다.
+
+업로드 전에 인프라 저장소의 GitHub OIDC 공급자와 IAM 역할을 AWS에 적용해야 합니다. GitHub 저장소의 **Settings → Secrets and variables → Actions → Variables**에 `AWS_ROLE_ARN`을 추가하고, 인프라 저장소에서 `terraform output -raw github_actions_ecr_push_role_arn`으로 확인한 역할 ARN을 설정합니다. 장기간 사용하는 AWS 액세스 키는 필요하지 않습니다. 워크플로는 해당 역할을 OIDC로 빌리므로 IAM 신뢰 정책에서 허용한 저장소와 `main` 브랜치에서만 동작합니다.
+
+이미지 태그는 `<커밋 SHA>-<워크플로 실행 ID>-<재시도 횟수>`입니다. ECR의 변경 불가 태그 정책을 지키면서 같은 커밋의 재실행도 구분하며, 업로드한 이미지 주소는 GitHub Actions 실행 요약에서 확인할 수 있습니다. 이미지 빌드와 업로드는 검증 작업과 별도의 작업에서 실행됩니다.
+
 ## 테스트
 
 ```powershell
