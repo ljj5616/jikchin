@@ -132,6 +132,52 @@ GitHub Actions의 `docker-smoke` 작업은 예시 설정으로 Docker 이미지�
 
 이미지 태그는 `<커밋 SHA>-<워크플로 실행 ID>-<재시도 횟수>`입니다. ECR의 변경 불가 태그 정책을 지키면서 같은 커밋의 재실행도 구분하며, 업로드한 이미지 주소는 GitHub Actions 실행 요약에서 확인할 수 있습니다. 이미지 빌드와 업로드는 검증 작업과 별도의 작업에서 실행됩니다.
 
+## EC2에서 RDS를 사용하는 서버 실행
+
+`compose.prod.yaml`은 ECR의 백엔드 이미지로 앱 컨테이너 하나만 실행합니다. DB와 데이터는 RDS에서 관리하며, EC2에 MySQL 서버나 DB 접속 클라이언트를 설치할 필요가 없습니다. 앱에 포함된 JDBC 드라이버로 연결하고 시작 로그에서 RDS 연결과 Flyway 적용 결과를 확인합니다.
+
+EC2에는 Docker Engine, Docker Compose 플러그인과 AWS CLI가 필요합니다. 현재 인프라의 EC2는 Session Manager로 접속하며 인스턴스 역할로 ECR 이미지를 다운로드하고 S3 사진 업로드 권한을 사용합니다. 아래 명령은 EC2의 Session Manager 터미널에서 실행합니다.
+
+1. EC2의 배포 디렉터리에 `compose.prod.yaml`과 `.env.prod.example`을 준비합니다. 환경변수 파일은 처음에만 복사하고 실제 값으로 수정합니다.
+
+   ```bash
+   if [ ! -f .env.prod ]; then
+     (umask 077; cp .env.prod.example .env.prod)
+   fi
+   chmod 600 .env.prod
+   vi .env.prod
+   ```
+
+   `APP_IMAGE`에는 ECR에 업로드한 이미지의 전체 주소와 태그를 입력합니다. 위 CI 이미지 업로드 절차에 따라 `main`의 검증이 성공하면 `publish-image`가 이미지를 업로드하며, GitHub Actions 실행 요약에서 해당 주소를 복사할 수 있습니다. EC2에서 앱을 실행하는 작업은 아래 절차로 수행합니다.
+
+   `DB_URL`의 호스트를 RDS 엔드포인트로 교체하고 `DB_USERNAME`, `DB_PASSWORD`에는 만들어둔 앱용 DB 계정을 입력합니다. 예시는 TLS 연결을 사용합니다. `JWT_SECRET`은 랜덤한 32바이트 이상의 값, `GOOGLE_CLIENT_ID`는 앱과 같은 Google 웹 클라이언트 ID, `ASSETS_BASE_URL`과 `AVATAR_S3_BUCKET`은 실제 이미지 제공 주소와 버킷 이름으로 설정합니다. 비밀번호의 `$` 등을 그대로 보존하려면 예시처럼 값을 작은따옴표로 감쌉니다. `.env.prod`는 Git과 Docker 빌드 컨텍스트에서 제외됩니다.
+
+2. 아래 레지스트리의 `ACCOUNT_ID`를 실제 AWS 계정 ID로 교체하고 ECR에 로그인합니다. `APP_IMAGE`와 같은 계정과 리전을 사용합니다.
+
+   ```bash
+   aws ecr get-login-password --region ap-northeast-2 |
+     sudo docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com
+   ```
+
+3. 설정을 검증한 뒤 이미지를 받아 앱을 실행하고 로그를 확인합니다. `config --quiet`은 환경변수 값을 출력하지 않고 설정을 검증합니다.
+
+   ```bash
+   sudo docker compose --env-file .env.prod -f compose.prod.yaml config --quiet
+   sudo docker compose --env-file .env.prod -f compose.prod.yaml pull
+   sudo docker compose --env-file .env.prod -f compose.prod.yaml up -d
+   sudo docker compose --env-file .env.prod -f compose.prod.yaml logs --tail=100 -f app
+   ```
+
+   첫 시작 시 Flyway가 `jikchin` DB에 마이그레이션을 적용하므로 해당 계정에 필요한 DDL 및 데이터 접근 권한이 있어야 합니다. 기존 테이블이 있는데 Flyway 이력이 없는 경우는 위 DB 마이그레이션 절차를 먼저 확인합니다. 접속 시간 초과가 발생하면 RDS 엔드포인트와 EC2에서 RDS 3306으로의 네트워크 경로 및 보안 그룹을 확인하고, `Access denied`는 계정과 비밀번호 및 계정의 접속 호스트 권한을 확인합니다.
+
+4. 로그 확인을 `Ctrl+C`로 끝내고 API 문서 응답을 확인합니다. 로그 확인을 끝내도 앱은 계속 실행됩니다.
+
+   ```bash
+   curl --fail --silent --show-error http://127.0.0.1:8080/v3/api-docs -o /dev/null
+   ```
+
+앱은 `127.0.0.1:8080`에 바인딩되며 외부 요청은 별도로 Nginx 등의 리버스 프록시와 도메인 및 HTTPS를 구성해 연결합니다. 앱 포트와 RDS 포트를 외부에 추가로 열 필요는 없습니다. 배포 이후에는 새 이미지 태그로 `APP_IMAGE`를 변경하고 위 `pull`, `up -d`와 응답 확인을 반복합니다. 컨테이너와 Docker 서비스가 재시작되면 `unless-stopped` 정책에 따라 앱이 다시 실행되며 Docker 서비스 자체의 부팅 시 자동 시작도 설정해야 합니다.
+
 ## 테스트
 
 ```powershell
