@@ -44,6 +44,9 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      - name: Verify deployment scripts
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+
       - name: Build
         run: ./gradlew clean build --no-daemon
 
@@ -78,6 +81,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [build, docker-smoke]
     runs-on: ubuntu-latest
+    outputs:
+      image_uri: ${{ steps.publish.outputs.image_uri }}
     permissions:
       contents: read
       id-token: write
@@ -108,6 +113,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push image
+        id: publish
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
@@ -115,4 +121,50 @@ jobs:
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           docker build --tag "$IMAGE_URI" .
           docker push "$IMAGE_URI"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
           echo "Published image: \`$IMAGE_URI\`" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: publish-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: jikchin-production-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-northeast-2
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      IMAGE_URI: ${{ needs.publish-image.outputs.image_uri }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout the image's source
+        uses: actions/checkout@v4
+
+      - name: Skip an outdated main revision
+        id: current
+        env:
+          REVISION: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          current_sha=$(gh api "repos/$REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$REVISION" = "$current_sha" ]; then
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'deploy=false' >> "$GITHUB_OUTPUT"
+            echo 'Skipping deployment because main has moved to a newer commit.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Configure AWS credentials using OIDC
+        if: steps.current.outputs.deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy on EC2 and wait for the result
+        if: steps.current.outputs.deploy == 'true'
+        run: python3 scripts/dispatch_deploy.py

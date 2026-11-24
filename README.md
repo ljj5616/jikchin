@@ -126,17 +126,31 @@ GitHub Actions의 `docker-smoke` 작업은 예시 설정으로 Docker 이미지�
 
 ### CI 이미지 업로드
 
-`main` 브랜치에 push되거나 `main`에서 CI를 수동 실행하면, 빌드·테스트와 Docker 기동 검증이 모두 성공한 후 `publish-image` 작업이 이미지를 ECR의 `jikchin-app` 저장소에 업로드합니다. pull request와 다른 브랜치에서는 기존 검증만 실행하며 이미지를 업로드하지 않습니다. 이 작업은 EC2에 배포하지 않습니다.
+`main` 브랜치에 push되거나 `main`에서 CI를 수동 실행하면, 빌드·테스트와 Docker 기동 검증이 모두 성공한 후 `publish-image` 작업이 이미지를 ECR의 `jikchin-app` 저장소에 업로드합니다. 이어서 `deploy` 작업이 EC2에 배포합니다. pull request와 다른 브랜치에서는 검증만 실행합니다.
 
 업로드 전에 인프라 저장소의 GitHub OIDC 공급자와 IAM 역할을 AWS에 적용해야 합니다. GitHub 저장소의 **Settings → Secrets and variables → Actions → Variables**에 `AWS_ROLE_ARN`을 추가하고, 인프라 저장소에서 `terraform output -raw github_actions_ecr_push_role_arn`으로 확인한 역할 ARN을 설정합니다. 장기간 사용하는 AWS 액세스 키는 필요하지 않습니다. 워크플로는 해당 역할을 OIDC로 빌리므로 IAM 신뢰 정책에서 허용한 저장소와 `main` 브랜치에서만 동작합니다.
 
 이미지 태그는 `<커밋 SHA>-<워크플로 실행 ID>-<재시도 횟수>`입니다. ECR의 변경 불가 태그 정책을 지키면서 같은 커밋의 재실행도 구분하며, 업로드한 이미지 주소는 GitHub Actions 실행 요약에서 확인할 수 있습니다. 이미지 빌드와 업로드는 검증 작업과 별도의 작업에서 실행됩니다.
 
+### EC2 자동 배포 준비
+
+배포를 활성화하기 전에 아래 설정을 완료합니다. 준비가 되지 않은 상태에서 `main`의 워크플로가 실행되면 이미지 업로드는 성공하더라도 배포 작업은 실패합니다.
+
+1. 인프라 저장소의 GitHub Actions SSM 권한을 Terraform으로 적용합니다. `terraform plan`을 확인한 후 적용하고, Actions의 `AWS_ROLE_ARN`이 해당 역할을 가리키는지 확인합니다.
+2. GitHub 저장소의 **Settings → Secrets and variables → Actions → Variables**에 `EC2_INSTANCE_ID`를 추가합니다. 값은 인프라 저장소의 `terraform output -raw server_instance_id`로 확인합니다.
+3. EC2가 실행 중이고 SSM 관리 노드로 연결되는지 확인합니다. Docker Engine, Docker Compose 플러그인, AWS CLI, Python 3, `curl`, `flock`과 `base64`가 필요합니다. Docker 서비스를 부팅 시 시작하도록 설정합니다.
+4. EC2의 `/opt/jikchin/.env.prod`에 실제 운영 환경변수를 준비합니다. 기존 파일을 덮어쓰지 말고 아래 수동 실행 절차를 참고해 이 경로로 옮깁니다. 파일에는 `APP_IMAGE` 항목이 정확히 하나 있어야 합니다. 파일 권한은 `600`으로 제한합니다. SSM의 배포 스크립트는 root로 실행됩니다.
+5. 기존 수동 컨테이너가 Compose 프로젝트 `jikchin-prod`의 `app`인지 확인합니다. 다른 프로젝트나 `docker run`으로 생성한 컨테이너가 같은 포트를 사용하고 있다면 첫 자동 배포 전에 충돌을 정리합니다.
+
+배포 작업은 해당 커밋의 `scripts/deploy.sh`와 `compose.prod.yaml`을 SSM으로 전송하므로 EC2에 Git 저장소나 스크립트를 미리 복사할 필요가 없습니다. EC2는 새 이미지를 먼저 pull한 뒤 앱을 교체하고, `/v3/api-docs` 응답에 성공하면 `/opt/jikchin/compose.prod.yaml`과 `.env.prod`의 `APP_IMAGE`를 갱신합니다. 앱 기동 실패 시 기존에 실행 중이던 컨테이너의 이미지로 복구를 시도하고 워크플로를 실패 처리합니다. 이전 컨테이너가 중지되어 있었다면 자동으로 시작하지 않습니다. 이미지 pull 실패 시 기존 컨테이너는 건드리지 않습니다.
+
+배포는 한 번에 하나만 실행하며, 배포 시작 시 이미 `main`이 다른 커밋으로 이동했다면 오래된 워크플로를 건너뜁니다. 단일 서버에서 컨테이너를 교체하므로 잠시 서비스가 중단되고 WebSocket이 끊길 수 있습니다. Flyway 마이그레이션은 앱 이미지 롤백 시 자동으로 되돌아가지 않으므로 스키마 호환성과 DB 백업을 별도로 확인합니다. `AWS-RunShellScript`는 EC2에서 root 명령을 실행하므로 `main`과 워크플로 파일의 변경 권한을 보호합니다.
+
 ## EC2에서 RDS를 사용하는 서버 실행
 
 `compose.prod.yaml`은 ECR의 백엔드 이미지로 앱 컨테이너 하나만 실행합니다. DB와 데이터는 RDS에서 관리하며, EC2에 MySQL 서버나 DB 접속 클라이언트를 설치할 필요가 없습니다. 앱에 포함된 JDBC 드라이버로 연결하고 시작 로그에서 RDS 연결과 Flyway 적용 결과를 확인합니다.
 
-EC2에는 Docker Engine, Docker Compose 플러그인과 AWS CLI가 필요합니다. 현재 인프라의 EC2는 Session Manager로 접속하며 인스턴스 역할로 ECR 이미지를 다운로드하고 S3 사진 업로드 권한을 사용합니다. 아래 명령은 EC2의 Session Manager 터미널에서 실행합니다.
+EC2에는 Docker Engine, Docker Compose 플러그인과 AWS CLI가 필요합니다. 현재 인프라의 EC2는 Session Manager로 접속하며 인스턴스 역할로 ECR 이미지를 다운로드하고 S3 사진 업로드 권한을 사용합니다. 아래 명령은 수동 실행 또는 복구가 필요할 때 EC2의 Session Manager 터미널에서 실행합니다. 자동 배포에서는 `/opt/jikchin`을 사용합니다.
 
 1. EC2의 배포 디렉터리에 `compose.prod.yaml`과 `.env.prod.example`을 준비합니다. 환경변수 파일은 처음에만 복사하고 실제 값으로 수정합니다.
 
